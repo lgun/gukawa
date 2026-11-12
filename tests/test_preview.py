@@ -75,7 +75,7 @@ class PreviewTests(unittest.TestCase):
                 self.assertIn('name="next" value="/episodes/sample"', page.text)
                 wrong = client.post('/login', data={'username': 'watcher', 'password': 'nope', 'next': '/'})
                 self.assertEqual(wrong.status_code, 401)
-                self.assertIn('맞지 않아요', wrong.text)
+                self.assertIn('구카와 login', wrong.text)
                 evil = client.post('/login', data={'username': 'watcher', 'password': 'pw', 'next': '//evil.example'})
                 self.assertEqual(evil.headers['location'], '/')
                 login = client.post('/login', data={'username': 'watcher', 'password': 'pw', 'next': '/episodes/sample'})

@@ -1,21 +1,13 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>구카와 · 로그인</title>
-{% include "_icons.html" %}
-<link rel="stylesheet" href="/static/viewer.css?v=4"></head>
-<body class="viewer login-body">
-<main class="login">
-  <form class="login-card" method="post" action="/login" autocomplete="on">
-    <img class="login-icon" src="/static/icon.png" alt="" width="96" height="96">
-    <h1>구카와</h1>
-    <p class="login-sub">이름과 비밀번호를 입력해 주세요.</p>
-    {% if error %}<p class="login-error" role="alert">{{ error }}</p>{% endif %}
-    <input type="hidden" name="next" value="{{ next }}">
-    <label class="field"><span>이름</span>
-      <input name="username" value="{{ username }}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required{% if not username %} autofocus{% endif %}></label>
-    <label class="field"><span>비밀번호</span>
-      <input name="password" type="password" autocomplete="current-password" required{% if username %} autofocus{% endif %}></label>
-    <button class="pill-button primary login-submit" type="submit">들어가기</button>
-  </form>
-</main>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>구카와 login</title>
+{% include "_icons.html" %}</head>
+<body>
+<h1>구카와 login</h1>
+<form method="post" action="/login">
+<input type="hidden" name="next" value="{{ next }}">
+<p><input name="username" value="{{ username }}" aria-label="name" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required></p>
+<p><input name="password" type="password" aria-label="password" autocomplete="current-password" required></p>
+<p><button type="submit">login</button></p>
+</form>
 </body></html>
