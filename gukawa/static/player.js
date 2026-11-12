@@ -116,6 +116,17 @@
       document.body.classList.toggle('player-page-locked', enabled);
       scheduleFit();
     }
+    // When the <video> itself goes fullscreen (iPhone, Android rotate-to-fullscreen, browser menus),
+    // the page overlay is not drawn, so show the same Korean file as a native subtitle track instead.
+    const nativeKorean = shell.querySelector('[data-native-korean]')?.track;
+    function videoIsNativeFullscreen() {
+      return document.fullscreenElement === video || document.webkitFullscreenElement === video || Boolean(video.webkitDisplayingFullscreen);
+    }
+    function syncNativeKorean(force) {
+      if (!nativeKorean) return;
+      const show = (force ?? videoIsNativeFullscreen()) && koreanEnabled.checked && !koreanEnabled.disabled;
+      nativeKorean.mode = show ? 'showing' : 'disabled';
+    }
     async function toggleFullscreen() {
       if (shell.classList.contains('is-faux-fullscreen')) return fauxFullscreen(false);
       if (document.fullscreenElement === shell) return document.exitFullscreen();
@@ -123,6 +134,7 @@
       try {
         if (shell.requestFullscreen) await shell.requestFullscreen();
         else if (shell.webkitRequestFullscreen) shell.webkitRequestFullscreen();
+        else if (video.webkitEnterFullscreen) { syncNativeKorean(true); video.webkitEnterFullscreen(); }
         else fauxFullscreen(true);
       } catch { fauxFullscreen(true); }
       scheduleFit();
@@ -205,6 +217,11 @@
     koreanEnabled.disabled = true;
     play.addEventListener('click', togglePlay);
     video.addEventListener('click', togglePlay);
+    video.addEventListener('dblclick', toggleFullscreen);
+    for (const name of ['fullscreenchange', 'webkitfullscreenchange']) document.addEventListener(name, () => syncNativeKorean());
+    video.addEventListener('webkitbeginfullscreen', () => syncNativeKorean(true));
+    video.addEventListener('webkitendfullscreen', () => syncNativeKorean(false));
+    if (nativeKorean) nativeKorean.mode = 'disabled';
     mute.addEventListener('click', toggleMute);
     fullscreen.addEventListener('click', toggleFullscreen);
     seek.addEventListener('pointerdown', () => { dragging = true; });
@@ -214,7 +231,7 @@
       if (Number.isFinite(video.duration)) video.currentTime = Number(seek.value);
       updateTime();
     });
-    koreanEnabled.addEventListener('change', render);
+    koreanEnabled.addEventListener('change', () => { render(); syncNativeKorean(); });
     for (const element of trackElements) {
       element.addEventListener('load', () => { if (element === trackElement) trackReady(); });
       element.addEventListener('error', () => { if (element === trackElement) trackFailed(); });

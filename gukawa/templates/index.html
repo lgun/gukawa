@@ -2,26 +2,13 @@
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>구카와 · 한국어 자막 보관함</title>
 {% include "_icons.html" %}
-<link rel="stylesheet" href="/static/viewer.css?v=2"></head>
+<link rel="stylesheet" href="/static/viewer.css?v=3"></head>
 <body class="viewer">
 <header class="topbar">
   <a class="logo" href="/"><img class="logo-icon" src="/static/icon.png" alt="" width="40" height="40">구카와</a>
   <nav class="topnav" aria-label="주요 메뉴">{% if request.state.role != "viewer" %}<a href="/admin">관리</a>{% endif %}</nav>
 </header>
 <main class="home">
-  <section class="hero">
-    <div>
-      <p class="kicker">작고 귀여운 녀석들의 이야기</p>
-      <h1>한 화씩, 한국어 자막으로.</h1>
-      <p class="lede">짧은 회차를 한국어 자막과 함께 차례로 볼 수 있어요. 회차를 고르면 이어서 다음 화로 넘어갈 수 있어요.</p>
-      {% if latest %}<div class="hero-actions">
-        <a class="pill-button primary" href="/episodes/{{ latest.id }}">최신화 보기 · {{ latest.episode_number }}화</a>
-        <a class="pill-button" href="/episodes/{{ first.id }}">처음부터 보기 · {{ first.episode_number }}화</a>
-      </div>{% endif %}
-    </div>
-    <div class="hero-art" aria-hidden="true"><span class="blob b2"></span><span class="blob b3"></span><img class="hero-icon" src="/static/icon.png" alt="" width="200" height="200"></div>
-  </section>
-
   <section aria-labelledby="list-title">
     <div class="list-head">
       <h2 id="list-title">회차 목록 <small>{{ total }}화</small></h2>
