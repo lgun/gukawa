@@ -116,6 +116,10 @@
     // While fullscreen on Android, hide the <video> and paint its frames into a <canvas>; the page then
     // only contains a picture, so the Korean subtitle layer always stays on top.
     const isAndroid = /Android/i.test(navigator.userAgent);
+    // Samsung Internet attaches its Video Assistant buttons (its own fullscreen player without our
+    // subtitles) to any visible <video>. There the picture is always drawn through the canvas so no
+    // visible <video> exists for it to attach to.
+    const isSamsung = /SamsungBrowser/i.test(navigator.userAgent);
     const mirror = document.createElement('canvas');
     mirror.className = 'video-mirror';
     mirror.hidden = true;
@@ -123,14 +127,17 @@
     frame.insertBefore(mirror, layer);
     const mirrorContext = mirror.getContext('2d');
     let mirroring = false;
+    let paintedAt = -1;
+    if (video.poster) mirror.style.backgroundImage = `url("${video.poster}")`;
     function paintMirror() {
       if (!mirroring) return;
-      if (video.videoWidth && video.readyState >= 2) {
+      // Skip redundant draws while paused on the same frame.
+      if (video.videoWidth && video.readyState >= 2 && (!video.paused || video.currentTime !== paintedAt)) {
         if (mirror.width !== video.videoWidth || mirror.height !== video.videoHeight) {
           mirror.width = video.videoWidth;
           mirror.height = video.videoHeight;
         }
-        try { mirrorContext.drawImage(video, 0, 0, mirror.width, mirror.height); } catch {}
+        try { mirrorContext.drawImage(video, 0, 0, mirror.width, mirror.height); paintedAt = video.currentTime; } catch {}
       }
       requestAnimationFrame(paintMirror);
     }
@@ -140,7 +147,7 @@
     parking.className = 'video-parking';
     parking.setAttribute('aria-hidden', 'true');
     function updateMirror() {
-      const wanted = isAndroid && isFullscreen();
+      const wanted = isSamsung || (isAndroid && isFullscreen());
       if (wanted === mirroring) return;
       mirroring = wanted;
       const wasPlaying = !video.paused;
@@ -295,7 +302,7 @@
         panel.textContent = [
           `UA: ${navigator.userAgent}`,
           `fullscreen: ${fs ? (fs === shell ? 'player' : fs.tagName) : (shell.classList.contains('is-faux-fullscreen') ? 'page-fill' : 'none')}`,
-          `mirror: ${mirroring} ${mirror.width}x${mirror.height}`,
+          `mirror: ${mirroring} ${mirror.width}x${mirror.height} samsung=${isSamsung} video in page=${frame.contains(video)}`,
           `video: ${video.videoWidth}x${video.videoHeight} t=${video.currentTime.toFixed(1)} ready=${video.readyState}`,
           `track loaded=${loaded} cues=${track.cues ? track.cues.length : 0} enabled=${koreanEnabled.checked}`,
           `layer hidden=${layer.hidden} text="${text.textContent}" bottom=${layer.style.bottom}`,
@@ -378,6 +385,7 @@
     window.addEventListener('pagehide', () => { disposed = true; observer.disconnect(); }, {once: true});
     if (trackElement.readyState === 2) trackReady();
     if (trackElement.readyState === 3) trackFailed();
+    updateMirror();
     updateTime();
     scheduleFit();
     const params = new URLSearchParams(location.search);
