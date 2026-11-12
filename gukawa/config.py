@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 class Settings:
     data_dir: Path
     admin_password: str = ""
+    viewer_username: str = ""
+    viewer_password: str = ""
     local_preview: bool = False
     instagram_username: str = "chiikawa.anime"
     min_episode: int = 360
@@ -64,6 +66,8 @@ def load_settings() -> Settings:
     return Settings(
         data_dir=Path(os.getenv("DATA_DIR", "./data")).resolve(),
         admin_password=os.getenv("ADMIN_PASSWORD", ""),
+        viewer_username=os.getenv("VIEWER_USERNAME", "").strip(),
+        viewer_password=os.getenv("VIEWER_PASSWORD", ""),
         local_preview=flag("LOCAL_PREVIEW", "false"),
         instagram_username=os.getenv("INSTAGRAM_USERNAME", "chiikawa.anime"),
         min_episode=int(os.getenv("MIN_EPISODE", "360")),

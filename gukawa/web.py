@@ -71,9 +71,18 @@ def create_app(settings: Settings | None = None):
             raise HTTPException(403, "관리 화면에서 요청해 주세요.")
 
     def viewer(request: Request, credentials: HTTPBasicCredentials | None = Depends(security)):
-        if (request.app.state.settings.local_preview and request.client
-                and request.client.host in {"127.0.0.1", "::1"}):
+        settings = request.app.state.settings
+        request.state.role = "admin"
+        if settings.local_preview and request.client and request.client.host in {"127.0.0.1", "::1"}:
             return
+        # Optional watch-only account: it can open the viewer and its files, never the admin page or actions.
+        if settings.viewer_username and settings.viewer_password and credentials:
+            if (secrets.compare_digest(credentials.username.encode(), settings.viewer_username.encode())
+                    and secrets.compare_digest(credentials.password.encode(), settings.viewer_password.encode())):
+                request.state.role = "viewer"
+                return
+        if not settings.admin_password and settings.viewer_password:
+            raise HTTPException(401, "로그인이 필요해요.", headers={"WWW-Authenticate": 'Basic realm="gukawa", charset="UTF-8"'})
         admin(request, credentials)
 
     @app.middleware("http")
@@ -113,7 +122,7 @@ def create_app(settings: Settings | None = None):
             "latest": episodes[-1] if episodes else None, "first": episodes[0] if episodes else None,
         })
 
-    @app.get("/admin", dependencies=[Depends(viewer)])
+    @app.get("/admin", dependencies=[Depends(admin)])
     def admin_page(request: Request, q: str = Query("", max_length=100), offset: int = Query(0, ge=0)):
         episodes = request.app.state.db.list(public=False, search=q, limit=50, offset=offset)
         return templates.TemplateResponse(request=request, name="admin.html", context={

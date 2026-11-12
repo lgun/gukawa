@@ -34,5 +34,29 @@ class PreviewTests(unittest.TestCase):
                 self.assertEqual(client.get('/').status_code, 401)
 
 
+    def test_watch_only_account_sees_viewer_but_not_admin(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            settings = Settings(Path(temporary), admin_password='admin-secret', viewer_username='arin', viewer_password='pw')
+            database = Database(settings.database)
+            database.enqueue('sample', '', 'Episode 360', episode_number=360, status='review')
+            directory = settings.data_dir / 'episodes' / 'sample'
+            directory.mkdir()
+            (directory / 'source.txt').write_text('English source', encoding='utf-8')
+            with TestClient(create_app(settings), client=('192.0.2.1', 1234)) as client:
+                client.auth = ('arin', 'pw')
+                home = client.get('/')
+                self.assertEqual(home.status_code, 200)
+                self.assertNotIn('href="/admin"', home.text)
+                self.assertEqual(client.get('/episodes/sample').status_code, 200)
+                self.assertEqual(client.get('/files/sample/source.txt').status_code, 200)
+                self.assertEqual(client.get('/admin').status_code, 401)
+                self.assertEqual(client.get('/api/admin/status').status_code, 401)
+                client.auth = ('arin', 'wrong')
+                self.assertEqual(client.get('/').status_code, 401)
+                client.auth = ('admin', 'admin-secret')
+                self.assertIn('href="/admin"', client.get('/').text)
+                self.assertEqual(client.get('/admin').status_code, 200)
+
+
 if __name__ == '__main__':
     unittest.main()

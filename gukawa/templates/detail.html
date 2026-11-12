@@ -6,7 +6,7 @@
 <body class="viewer">
 <header class="topbar">
   <a class="logo" href="/"><img class="logo-icon" src="/static/icon.png" alt="" width="40" height="40">구카와</a>
-  <nav class="topnav" aria-label="주요 메뉴"><a href="/">회차 목록</a><a href="/admin">관리</a></nav>
+  <nav class="topnav" aria-label="주요 메뉴"><a href="/">회차 목록</a>{% if request.state.role != "viewer" %}<a href="/admin">관리</a>{% endif %}</nav>
 </header>
 <main class="watch">
   <div class="watch-main">
