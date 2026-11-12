@@ -1,0 +1,32 @@
+services:
+  web:
+    build: .
+    image: gukawa:local
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+      INSTAGRAM_COOKIES: /secrets/instagram-cookies.txt
+    ports:
+      # 기본은 서버 안에서만 접속. 리버스 프록시 없이 외부에서 바로 열려면 .env에 GUKAWA_BIND=0.0.0.0
+      - "${GUKAWA_BIND:-127.0.0.1}:${GUKAWA_PORT:-8000}:8000"
+    volumes:
+      # 영상·자막·DB(SQLite)·OCR 모델은 프로젝트 폴더의 data/ 에 그대로 저장된다.
+      - ./data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  worker:
+    image: gukawa:local
+    build: .
+    command: ["python", "-m", "gukawa.worker"]
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+      INSTAGRAM_COOKIES: /secrets/instagram-cookies.txt
+    volumes:
+      - ./data:/data
+      - ./secrets:/secrets:ro
+    restart: unless-stopped

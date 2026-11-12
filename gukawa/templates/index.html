@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>구카와 · 한국어 자막 보관함</title><link rel="stylesheet" href="/static/viewer.css?v=1"></head>
+<body class="viewer">
+<header class="topbar">
+  <a class="logo" href="/"><span class="mochi" aria-hidden="true"><i></i><i></i></span>구카와</a>
+  <nav class="topnav" aria-label="주요 메뉴"><a href="/admin">관리</a></nav>
+</header>
+<main class="home">
+  <section class="hero">
+    <div>
+      <p class="kicker">작고 귀여운 녀석들의 이야기</p>
+      <h1>한 화씩, 한국어 자막으로.</h1>
+      <p class="lede">짧은 회차를 한국어 자막과 함께 차례로 볼 수 있어요. 회차를 고르면 이어서 다음 화로 넘어갈 수 있어요.</p>
+      {% if latest %}<div class="hero-actions">
+        <a class="pill-button primary" href="/episodes/{{ latest.id }}">최신화 보기 · {{ latest.episode_number }}화</a>
+        <a class="pill-button" href="/episodes/{{ first.id }}">처음부터 보기 · {{ first.episode_number }}화</a>
+      </div>{% endif %}
+    </div>
+    <div class="hero-art" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
+  </section>
+
+  <section aria-labelledby="list-title">
+    <div class="list-head">
+      <h2 id="list-title">회차 목록 <small>{{ total }}화</small></h2>
+      <form role="search" class="search"><label class="sr-only" for="q">회차 번호나 제목</label><input id="q" name="q" value="{{ q }}" placeholder="회차 번호 검색 (예: 380)" inputmode="search"><button class="pill-button">찾기</button></form>
+    </div>
+    {% if episodes %}
+    <ol class="episode-grid">
+      {% for item in episodes|reverse %}
+      <li><a class="episode-card" href="/episodes/{{ item.id }}">
+        <span class="thumb">{% if item.poster %}<img src="/files/{{ item.id }}/playback.jpg" alt="" loading="lazy">{% else %}<span class="thumb-empty" aria-hidden="true"><i></i><i></i></span>{% endif %}<span class="badge">{{ item.episode_number }}화</span></span>
+        <span class="card-title">{{ item.label }}</span>
+      </a></li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <div class="empty-state"><span class="mochi big" aria-hidden="true"><i></i><i></i></span><p>{% if q %}'{{ q }}'에 맞는 회차가 없어요.{% else %}아직 한국어 자막이 준비된 회차가 없어요.{% endif %}</p>{% if q %}<a class="pill-button" href="/">전체 목록 보기</a>{% endif %}</div>
+    {% endif %}
+  </section>
+</main>
+<footer class="foot">구카와 · 개인 보관용 한국어 자막 뷰어</footer>
+</body></html>

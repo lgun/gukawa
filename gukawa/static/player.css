@@ -1,0 +1,54 @@
+.player-shell{--p-bg:#2b2328;--p-fg:#fff7f9;--p-muted:#d9c7cd;--p-accent:#ffc9d6;--p-line:#4a3c43;
+  margin:0;background:var(--p-bg);border:2px solid #4a3a40;border-radius:26px;overflow:hidden;display:flex;flex-direction:column;align-items:center;color:var(--p-fg);
+  box-shadow:0 6px 0 #f3dfe4}
+.video-frame{position:relative;flex:none;max-width:100%;overflow:hidden;background:#000}
+.player-shell:not(.is-enhanced) .video-frame{width:100%}
+.video-frame video{display:block;width:100%;margin:0;border-radius:0;object-fit:contain;background:#000}
+.is-enhanced .video-frame video{height:100%;max-height:none;cursor:pointer}
+.player-shell [hidden]{display:none!important}
+.subtitle-layer{position:absolute;left:0;right:0;display:flex;justify-content:center;padding:8px 12px;pointer-events:none}
+.subtitle-text{word-break:keep-all;overflow-wrap:anywhere;text-align:center;line-height:1.5;font-weight:700;color:#fff;max-width:100%}
+.subtitle-line{background:rgba(20,14,17,.86);padding:2px 8px;border-radius:6px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.subtitle-text:empty,.subtitle-line:empty{display:none}
+
+/* paused state: a soft round play badge in the middle of the frame */
+.is-enhanced.is-paused .video-frame::after{content:"▶";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:68px;height:68px;
+  border-radius:50%;background:rgba(255,201,214,.92);color:#4a3a40;display:grid;place-items:center;font-size:26px;padding-left:5px;
+  border:2px solid #4a3a40;pointer-events:none}
+.is-enhanced.is-paused:has(.end-card:not([hidden])) .video-frame::after{display:none}
+
+.end-card{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;
+  background:rgba(43,35,40,.82);color:#fff7f9;padding:16px;z-index:2}
+.end-card p{margin:0;font-weight:700}
+.end-card .countdown{font-weight:500;font-size:13px;color:var(--p-muted)}
+.end-card .pill-button{color:#4a3a40}
+
+.player-controls{display:flex;align-items:center;gap:6px;padding:10px 12px;width:100%;background:var(--p-bg);flex:none}
+.ctl{display:inline-grid;place-items:center;flex:none;width:40px;height:40px;border-radius:50%;border:0;background:transparent;color:var(--p-fg);
+  font:inherit;font-size:18px;line-height:1;cursor:pointer;text-decoration:none}
+.ctl:hover{background:var(--p-line)}
+.ctl.play{width:46px;height:46px;background:var(--p-accent);color:#4a3a40;font-size:17px}
+.ctl.play:hover{background:#ffd9e2}
+.ctl.is-off{opacity:.3;cursor:default}
+.ctl.is-off:hover{background:transparent}
+.player-controls input[type=range]{flex:1;min-width:45px;width:auto;margin:0 4px;padding:0;border:0;background:none;accent-color:var(--p-accent);min-height:36px;cursor:pointer}
+.player-time{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:12px;color:var(--p-muted)}
+.caption-settings{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:2px 16px 12px;width:100%;font-size:13px;color:var(--p-muted);flex:none}
+.caption-settings label{display:flex;align-items:center;gap:7px;cursor:pointer;white-space:nowrap}
+.caption-settings input[type=checkbox]{width:16px;height:16px;margin:0;accent-color:var(--p-accent)}
+.caption-settings select{font:inherit;color:var(--p-fg);background:var(--p-line);border:1px solid #6b5a62;border-radius:999px;padding:4px 10px;max-width:240px}
+.player-status{margin:0;padding:0 16px 10px;font-size:13px;align-self:flex-start;color:var(--p-muted)}
+.player-status:empty{display:none}
+.player-shell:fullscreen,.player-shell.is-faux-fullscreen{width:100%;height:100%;border-radius:0;border:0;margin:0;padding:8px;justify-content:center;background:#000;box-shadow:none}
+.player-shell.is-faux-fullscreen{position:fixed;inset:0;z-index:9999;height:100dvh;width:100vw}
+.player-page-locked{overflow:hidden}
+.player-shell:fullscreen .player-controls,.player-shell:fullscreen .caption-settings,.is-faux-fullscreen .player-controls,.is-faux-fullscreen .caption-settings{max-width:1400px;background:transparent}
+.player-shell:fullscreen .player-status,.is-faux-fullscreen .player-status{align-self:center}
+@media(max-width:600px){
+  .player-shell{border-radius:18px}
+  .player-controls{gap:2px;padding:8px 6px}
+  .ctl{width:34px;height:34px;font-size:15px}.ctl.play{width:40px;height:40px}
+  .player-time{font-size:10px}
+  .caption-settings{gap:6px 12px;font-size:12px;padding:2px 10px 10px}
+  .subtitle-layer{padding:5px 7px}
+}
