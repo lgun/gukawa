@@ -127,10 +127,21 @@
       const show = (force ?? videoIsNativeFullscreen()) && koreanEnabled.checked && !koreanEnabled.disabled;
       nativeKorean.mode = show ? 'showing' : 'disabled';
     }
+    // Android browsers may move a fullscreen video onto its own surface, hiding the page overlay on top of it.
+    // Use the browser's own video fullscreen there, which draws the native Korean track itself.
+    const preferNativeFullscreen = /Android/i.test(navigator.userAgent) && Boolean(video.requestFullscreen);
     async function toggleFullscreen() {
       if (shell.classList.contains('is-faux-fullscreen')) return fauxFullscreen(false);
-      if (document.fullscreenElement === shell) return document.exitFullscreen();
+      if (document.fullscreenElement === shell || document.fullscreenElement === video) return document.exitFullscreen();
       if (document.webkitFullscreenElement === shell) return document.webkitExitFullscreen();
+      if (preferNativeFullscreen) {
+        syncNativeKorean(true);
+        try {
+          await video.requestFullscreen({ navigationUI: 'hide' });
+          screen.orientation?.lock?.('landscape').catch(() => {});
+        } catch { syncNativeKorean(false); fauxFullscreen(true); }
+        return;
+      }
       try {
         if (shell.requestFullscreen) await shell.requestFullscreen();
         else if (shell.webkitRequestFullscreen) shell.webkitRequestFullscreen();
@@ -218,7 +229,10 @@
     play.addEventListener('click', togglePlay);
     video.addEventListener('click', togglePlay);
     video.addEventListener('dblclick', toggleFullscreen);
-    for (const name of ['fullscreenchange', 'webkitfullscreenchange']) document.addEventListener(name, () => syncNativeKorean());
+    for (const name of ['fullscreenchange', 'webkitfullscreenchange']) document.addEventListener(name, () => {
+      syncNativeKorean();
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) screen.orientation?.unlock?.();
+    });
     video.addEventListener('webkitbeginfullscreen', () => syncNativeKorean(true));
     video.addEventListener('webkitendfullscreen', () => syncNativeKorean(false));
     if (nativeKorean) nativeKorean.mode = 'disabled';
