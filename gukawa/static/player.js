@@ -111,9 +111,41 @@
     function toggleMute() {
       video.muted = !video.muted;
     }
+    // Android browsers (Samsung Internet in particular) can lift a fullscreen <video> onto their own
+    // player surface: page subtitles drawn on top disappear and native text tracks are not shown either.
+    // While fullscreen on Android, hide the <video> and paint its frames into a <canvas>; the page then
+    // only contains a picture, so the Korean subtitle layer always stays on top.
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const mirror = document.createElement('canvas');
+    mirror.className = 'video-mirror';
+    mirror.hidden = true;
+    mirror.setAttribute('aria-hidden', 'true');
+    frame.insertBefore(mirror, layer);
+    const mirrorContext = mirror.getContext('2d');
+    let mirroring = false;
+    function paintMirror() {
+      if (!mirroring) return;
+      if (video.videoWidth && video.readyState >= 2) {
+        if (mirror.width !== video.videoWidth || mirror.height !== video.videoHeight) {
+          mirror.width = video.videoWidth;
+          mirror.height = video.videoHeight;
+        }
+        try { mirrorContext.drawImage(video, 0, 0, mirror.width, mirror.height); } catch {}
+      }
+      requestAnimationFrame(paintMirror);
+    }
+    function updateMirror() {
+      const wanted = isAndroid && isFullscreen();
+      if (wanted === mirroring) return;
+      mirroring = wanted;
+      mirror.hidden = !wanted;
+      shell.classList.toggle('is-mirroring', wanted);
+      if (wanted) requestAnimationFrame(paintMirror);
+    }
     function fauxFullscreen(enabled) {
       shell.classList.toggle('is-faux-fullscreen', enabled);
       document.body.classList.toggle('player-page-locked', enabled);
+      updateMirror();
       scheduleFit();
     }
     // When the <video> itself goes fullscreen (iPhone, Android rotate-to-fullscreen, browser menus),
@@ -127,19 +159,17 @@
       const show = (force ?? videoIsNativeFullscreen()) && koreanEnabled.checked && !koreanEnabled.disabled;
       nativeKorean.mode = show ? 'showing' : 'disabled';
     }
-    // Android browsers may move a fullscreen video onto its own surface, hiding the page overlay on top of it.
-    // Use the browser's own video fullscreen there, which draws the native Korean track itself.
-    const preferNativeFullscreen = /Android/i.test(navigator.userAgent) && Boolean(video.requestFullscreen);
     async function toggleFullscreen() {
       if (shell.classList.contains('is-faux-fullscreen')) return fauxFullscreen(false);
       if (document.fullscreenElement === shell || document.fullscreenElement === video) return document.exitFullscreen();
       if (document.webkitFullscreenElement === shell) return document.webkitExitFullscreen();
-      if (preferNativeFullscreen) {
-        syncNativeKorean(true);
+      if (isAndroid) {
         try {
-          await video.requestFullscreen({ navigationUI: 'hide' });
+          await shell.requestFullscreen({ navigationUI: 'hide' });
           screen.orientation?.lock?.('landscape').catch(() => {});
-        } catch { syncNativeKorean(false); fauxFullscreen(true); }
+        } catch { fauxFullscreen(true); }
+        updateMirror();
+        scheduleFit();
         return;
       }
       try {
@@ -230,9 +260,36 @@
     video.addEventListener('click', togglePlay);
     video.addEventListener('dblclick', toggleFullscreen);
     for (const name of ['fullscreenchange', 'webkitfullscreenchange']) document.addEventListener(name, () => {
+      if (isAndroid && videoIsNativeFullscreen()) {
+        // The browser fullscreened the bare <video> (e.g. on rotation); its player hides our subtitles.
+        // Leave it and fill the page with the player instead, which keeps the subtitles visible.
+        document.exitFullscreen?.().catch(() => {});
+        fauxFullscreen(true);
+        return;
+      }
       syncNativeKorean();
+      updateMirror();
       if (!document.fullscreenElement && !document.webkitFullscreenElement) screen.orientation?.unlock?.();
     });
+    mirror.addEventListener('click', togglePlay);
+    mirror.addEventListener('dblclick', toggleFullscreen);
+    if (new URLSearchParams(location.search).get('debug') === '1') {
+      const panel = document.createElement('pre');
+      panel.className = 'player-debug';
+      shell.append(panel);
+      setInterval(() => {
+        const fs = document.fullscreenElement || document.webkitFullscreenElement;
+        panel.textContent = [
+          `UA: ${navigator.userAgent}`,
+          `fullscreen: ${fs ? (fs === shell ? 'player' : fs.tagName) : (shell.classList.contains('is-faux-fullscreen') ? 'page-fill' : 'none')}`,
+          `mirror: ${mirroring} ${mirror.width}x${mirror.height}`,
+          `video: ${video.videoWidth}x${video.videoHeight} t=${video.currentTime.toFixed(1)} ready=${video.readyState}`,
+          `track loaded=${loaded} cues=${track.cues ? track.cues.length : 0} enabled=${koreanEnabled.checked}`,
+          `layer hidden=${layer.hidden} text="${text.textContent}" bottom=${layer.style.bottom}`,
+          `frame ${frame.clientWidth}x${frame.clientHeight} native track=${nativeKorean ? nativeKorean.mode : '-'}`,
+        ].join(String.fromCharCode(10));
+      }, 500);
+    }
     video.addEventListener('webkitbeginfullscreen', () => syncNativeKorean(true));
     video.addEventListener('webkitendfullscreen', () => syncNativeKorean(false));
     if (nativeKorean) nativeKorean.mode = 'disabled';
