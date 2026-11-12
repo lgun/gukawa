@@ -77,7 +77,7 @@
       const ratio = video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 16 / 9;
       const width = Math.max(1, shell.clientWidth - paddingX);
       const maxHeight = isFullscreen()
-        ? Math.max(60, shell.clientHeight - paddingY - controls.offsetHeight - settings.offsetHeight - status.offsetHeight)
+        ? Math.max(60, shell.clientHeight - paddingY)
         : Math.min(640, window.innerHeight * .72);
       const fittedWidth = Math.min(width, maxHeight * ratio);
       frame.style.width = `${fittedWidth}px`;
@@ -164,6 +164,7 @@
     }
     function fauxFullscreen(enabled) {
       shell.classList.toggle('is-faux-fullscreen', enabled);
+      requestAnimationFrame(() => resetOverlayForMode());
       document.body.classList.toggle('player-page-locked', enabled);
       updateMirror();
       scheduleFit();
@@ -277,7 +278,44 @@
     video.disablePictureInPicture = true;
     koreanEnabled.disabled = true;
     play.addEventListener('click', togglePlay);
-    video.addEventListener('click', togglePlay);
+    // Fullscreen: the picture fills the screen and the controls float over it only after a tap or
+    // mouse move, hiding again 3 s into playback. Outside fullscreen a tap still plays/pauses.
+    let overlayTimer = null;
+    function showOverlay() {
+      // Lift subtitles only by the part of the picture the floating controls actually cover.
+      const frameBox = frame.getBoundingClientRect();
+      const controlsTop = Math.min(controls.getBoundingClientRect().top, settings.getBoundingClientRect().top || Infinity);
+      shell.style.setProperty('--caption-lift', `${Math.max(0, Math.round(frameBox.bottom - controlsTop + 6))}px`);
+      shell.classList.add('controls-visible');
+      clearTimeout(overlayTimer);
+      if (!video.paused) overlayTimer = setTimeout(hideOverlay, 3000);
+    }
+    function hideOverlay() {
+      clearTimeout(overlayTimer);
+      shell.classList.remove('controls-visible');
+    }
+    function surfaceTap(event) {
+      if (!isFullscreen()) return togglePlay();
+      if (event.pointerType === 'mouse' || event.detail === 0) {
+        togglePlay();
+        return showOverlay();
+      }
+      if (shell.classList.contains('controls-visible')) hideOverlay(); else showOverlay();
+    }
+    let lastPointer = 'mouse';
+    shell.addEventListener('pointerdown', event => { lastPointer = event.pointerType; }, true);
+    function surfaceClick(event) { surfaceTap({ pointerType: lastPointer, detail: event.detail }); }
+    shell.addEventListener('mousemove', () => { if (isFullscreen() && lastPointer === 'mouse') showOverlay(); });
+    for (const element of [controls, settings]) {
+      element.addEventListener('pointerdown', () => { if (isFullscreen()) showOverlay(); });
+      element.addEventListener('focusin', () => { if (isFullscreen()) showOverlay(); });
+    }
+    video.addEventListener('play', () => { if (isFullscreen() && shell.classList.contains('controls-visible')) showOverlay(); });
+    video.addEventListener('pause', () => { if (isFullscreen()) showOverlay(); });
+    function resetOverlayForMode() {
+      if (isFullscreen()) { if (video.paused) showOverlay(); else hideOverlay(); } else hideOverlay();
+    }
+    video.addEventListener('click', surfaceClick);
     video.addEventListener('dblclick', toggleFullscreen);
     for (const name of ['fullscreenchange', 'webkitfullscreenchange']) document.addEventListener(name, () => {
       if (isAndroid && videoIsNativeFullscreen()) {
@@ -291,7 +329,7 @@
       updateMirror();
       if (!document.fullscreenElement && !document.webkitFullscreenElement) screen.orientation?.unlock?.();
     });
-    mirror.addEventListener('click', togglePlay);
+    mirror.addEventListener('click', surfaceClick);
     mirror.addEventListener('dblclick', toggleFullscreen);
     if (new URLSearchParams(location.search).get('debug') === '1') {
       const panel = document.createElement('pre');
@@ -376,8 +414,8 @@
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape' && shell.classList.contains('is-faux-fullscreen')) fauxFullscreen(false);
     });
-    document.addEventListener('fullscreenchange', scheduleFit);
-    document.addEventListener('webkitfullscreenchange', scheduleFit);
+    document.addEventListener('fullscreenchange', () => { scheduleFit(); resetOverlayForMode(); });
+    document.addEventListener('webkitfullscreenchange', () => { scheduleFit(); resetOverlayForMode(); });
     window.addEventListener('resize', scheduleFit);
     window.visualViewport?.addEventListener('resize', scheduleFit);
     const observer = new ResizeObserver(scheduleFit);

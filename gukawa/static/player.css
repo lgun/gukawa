@@ -60,3 +60,28 @@
 .video-parking video{width:2px;height:2px}
 .player-debug{position:absolute;left:8px;top:8px;z-index:5;max-width:calc(100% - 16px);margin:0;padding:8px;border-radius:8px;
   background:rgba(0,0,0,.75);color:#9ef59e;font:11px/1.4 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all;pointer-events:none}
+
+/* Fullscreen: the picture fills the screen; controls, caption switches and status float over the
+   bottom edge only while .controls-visible is set (tap / mouse move), and fade out otherwise. */
+.player-shell:fullscreen,.player-shell.is-faux-fullscreen{padding:0;justify-content:center;align-items:center;position:relative}
+.player-shell.is-faux-fullscreen{position:fixed}
+.player-shell:fullscreen .player-controls,.player-shell.is-faux-fullscreen .player-controls,
+.player-shell:fullscreen .caption-settings,.player-shell.is-faux-fullscreen .caption-settings,
+.player-shell:fullscreen .player-status,.player-shell.is-faux-fullscreen .player-status{
+  position:absolute;left:0;right:0;max-width:none;z-index:4;opacity:0;pointer-events:none;transition:opacity .2s ease}
+.player-shell:fullscreen .player-controls,.player-shell.is-faux-fullscreen .player-controls{
+  bottom:calc(40px + env(safe-area-inset-bottom,0px));padding:8px max(16px,env(safe-area-inset-left,0px)) 4px max(16px,env(safe-area-inset-right,0px));background:transparent}
+.player-shell:fullscreen .caption-settings,.player-shell.is-faux-fullscreen .caption-settings{
+  bottom:0;padding:6px max(18px,env(safe-area-inset-left,0px)) calc(12px + env(safe-area-inset-bottom,0px));background:transparent;color:#fff}
+.player-shell:fullscreen .player-status,.player-shell.is-faux-fullscreen .player-status{top:12px;bottom:auto;padding:0 16px;text-align:center;color:#fff}
+.player-shell:fullscreen::after,.player-shell.is-faux-fullscreen::after{content:"";position:absolute;left:0;right:0;bottom:0;height:150px;z-index:3;pointer-events:none;
+  background:linear-gradient(transparent,rgba(0,0,0,.72));opacity:0;transition:opacity .2s ease}
+.player-shell.controls-visible:fullscreen .player-controls,.player-shell.controls-visible.is-faux-fullscreen .player-controls,
+.player-shell.controls-visible:fullscreen .caption-settings,.player-shell.controls-visible.is-faux-fullscreen .caption-settings,
+.player-shell.controls-visible:fullscreen .player-status,.player-shell.controls-visible.is-faux-fullscreen .player-status,
+.player-shell.controls-visible:fullscreen::after,.player-shell.controls-visible.is-faux-fullscreen::after{opacity:1;pointer-events:auto}
+.player-shell.controls-visible:fullscreen::after,.player-shell.controls-visible.is-faux-fullscreen::after{pointer-events:none}
+/* keep subtitles clear of the floating controls while they are shown */
+.player-shell:fullscreen .subtitle-layer,.player-shell.is-faux-fullscreen .subtitle-layer{transition:transform .2s ease}
+.player-shell.controls-visible:fullscreen .subtitle-layer,.player-shell.controls-visible.is-faux-fullscreen .subtitle-layer{transform:translateY(calc(-1 * var(--caption-lift, 0px)))}
+.player-shell:fullscreen .player-status:empty,.player-shell.is-faux-fullscreen .player-status:empty{display:none}
