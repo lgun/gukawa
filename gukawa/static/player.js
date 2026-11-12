@@ -134,10 +134,23 @@
       }
       requestAnimationFrame(paintMirror);
     }
+    // The <video> is parked outside the fullscreen player while mirroring, so the fullscreen element holds
+    // no video at all and the browser has nothing to take over. Moving it within one task keeps it playing.
+    const parking = document.createElement('div');
+    parking.className = 'video-parking';
+    parking.setAttribute('aria-hidden', 'true');
     function updateMirror() {
       const wanted = isAndroid && isFullscreen();
       if (wanted === mirroring) return;
       mirroring = wanted;
+      const wasPlaying = !video.paused;
+      if (wanted) {
+        if (!parking.isConnected) document.body.append(parking);
+        parking.append(video);
+      } else {
+        frame.prepend(video);
+      }
+      if (wasPlaying && video.paused) video.play().catch(() => {});
       mirror.hidden = !wanted;
       shell.classList.toggle('is-mirroring', wanted);
       if (wanted) requestAnimationFrame(paintMirror);

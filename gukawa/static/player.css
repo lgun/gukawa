@@ -56,6 +56,7 @@
 }
 /* Android fullscreen: frames are painted into a canvas and the real <video> is hidden underneath. */
 .video-mirror{position:absolute;inset:0;width:100%;height:100%;display:block;background:#000;cursor:pointer}
-.is-mirroring .video-frame video{opacity:0}
+.video-parking{position:fixed;left:0;top:0;width:2px;height:2px;overflow:hidden;pointer-events:none;z-index:-1}
+.video-parking video{width:2px;height:2px}
 .player-debug{position:absolute;left:8px;top:8px;z-index:5;max-width:calc(100% - 16px);margin:0;padding:8px;border-radius:8px;
   background:rgba(0,0,0,.75);color:#9ef59e;font:11px/1.4 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all;pointer-events:none}
