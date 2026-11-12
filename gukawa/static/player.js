@@ -245,6 +245,7 @@
       mute.textContent = video.muted ? '🔇' : '🔊';
       mute.setAttribute('aria-pressed', String(video.muted));
       mute.setAttribute('aria-label', video.muted ? '소리 켜기' : '음소거');
+      if (!video.muted && status.textContent.startsWith('소리가 꺼진')) status.textContent = '';
     });
     video.addEventListener('error', () => { status.textContent = '영상을 불러오지 못했어요.'; });
     document.addEventListener('keydown', event => {
@@ -254,7 +255,8 @@
       if (target !== seek && target.closest?.('input, select, textarea')) return;
       if (event.key === ' ' && target.closest?.('button, a')) return;
       const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
-      if ([' ', 'k', 'ArrowLeft', 'ArrowRight', 'm', 'f', 'n', 'p'].includes(key)) event.preventDefault(); else return;
+      if ([' ', 'k', 'ArrowLeft', 'ArrowRight', 'm', 'f', 'n', 'p', 'c'].includes(key)) event.preventDefault(); else return;
+      if (key === 'c' && !koreanEnabled.disabled) { koreanEnabled.checked = !koreanEnabled.checked; render(); }
       if (key === ' ' || key === 'k') togglePlay();
       if (key === 'm') toggleMute();
       if (key === 'f') toggleFullscreen();
@@ -279,7 +281,12 @@
     scheduleFit();
     const params = new URLSearchParams(location.search);
     if (params.get('autoplay') === '1') {
-      video.play().catch(() => { status.textContent = '재생 버튼을 눌러 이어서 보세요.'; });
+      // Browsers may block autoplay with sound after a page change; fall back to muted playback.
+      video.play().catch(() => {
+        video.muted = true;
+        video.play().then(() => { status.textContent = '소리가 꺼진 채 이어서 재생 중이에요. 🔊 버튼으로 켜 주세요.'; })
+          .catch(() => { status.textContent = '재생 버튼을 눌러 이어서 보세요.'; });
+      });
     }
     if (params.get('fullscreen') === '1') {
       // Browsers only allow real fullscreen after a click; keep the player filling the page instead.

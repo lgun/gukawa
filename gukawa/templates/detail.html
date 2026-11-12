@@ -1,10 +1,11 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{{ episode.title_ko or episode.title }} · 구카와</title>
-<link rel="stylesheet" href="/static/viewer.css?v=1"><link rel="stylesheet" href="/static/player.css?v=viewer-1"><script src="/static/player.js?v=viewer-1" defer></script></head>
+{% include "_icons.html" %}
+<link rel="stylesheet" href="/static/viewer.css?v=2"><link rel="stylesheet" href="/static/player.css?v=viewer-2"><script src="/static/player.js?v=viewer-2" defer></script></head>
 <body class="viewer">
 <header class="topbar">
-  <a class="logo" href="/"><span class="mochi" aria-hidden="true"><i></i><i></i></span>구카와</a>
+  <a class="logo" href="/"><img class="logo-icon" src="/static/icon.png" alt="" width="40" height="40">구카와</a>
   <nav class="topnav" aria-label="주요 메뉴"><a href="/">회차 목록</a><a href="/admin">관리</a></nav>
 </header>
 <main class="watch">
@@ -25,12 +26,12 @@
       <div class="video-frame">
         <video controls playsinline preload="metadata" tabindex="0"{% if showing_main %} poster="/files/{{ episode.id }}/playback.jpg"{% endif %}>
           <source src="/files/{{ episode.id }}/{{ video_file }}" type="video/mp4">
-          <track kind="subtitles" label="영어 원문" srclang="{{ episode.input_language }}" src="/files/{{ episode.id }}/{{ episode.input_language }}.vtt">
-          {% for option in translation_options %}<track kind="metadata" label="한국어" srclang="ko" src="/files/{{ episode.id }}/{{ option.file }}" data-korean-track data-translation-id="{{ option.id }}"{% if option.id == selected_translation %} default{% endif %}>{% endfor %}
+          {% if has_korean %}<track kind="metadata" label="한국어" srclang="ko" src="/files/{{ episode.id }}/ko.vtt" data-korean-track default>{% endif %}
         </video>
         <div class="subtitle-layer" data-subtitle-layer hidden aria-live="off"><div class="subtitle-text" data-subtitle-text></div></div>
         <div class="end-card" data-end-card hidden>
-          {% if next_episode %}<p>다음 화로 넘어갈까요?</p><a class="pill-button primary" href="/episodes/{{ next_episode.id }}?autoplay=1" data-next-link>{{ next_episode.episode_number }}화 보기 ▶</a>
+          <img class="end-icon" src="/static/icon.png" alt="" width="72" height="72">
+          {% if next_episode %}<p>다음 화로 넘어갈까요?</p><a class="pill-button primary" href="/episodes/{{ next_episode.id }}" data-next-link>{{ next_episode.episode_number }}화 보기 ▶</a>
           <p class="countdown" data-countdown></p>{% else %}<p>가장 최신 화예요.</p><a class="pill-button" href="/">회차 목록으로</a>{% endif %}
           <button type="button" class="pill-button" data-replay>다시 보기</button>
         </div>
@@ -47,37 +48,18 @@
       {% if has_korean %}<div class="caption-settings" data-caption-settings hidden>
         <label><input type="checkbox" data-korean-enabled checked> 한국어 자막</label>
         <label><input type="checkbox" data-autonext checked> 끝나면 다음화 자동 재생</label>
-        {% if comparison %}<label>번역 <select data-translation-select aria-label="한국어 번역 선택">{% for option in translation_options %}<option value="{{ option.id }}"{% if option.id == selected_translation %} selected{% endif %}>{{ option.label }}</option>{% endfor %}{% if api_pending %}<option disabled>API 번역 · 대기 중</option>{% endif %}</select></label>{% endif %}
       </div>{% endif %}
       <p class="player-status" data-player-status role="status">{% if not has_korean %}한국어 자막이 아직 없어요.{% endif %}</p>
     </section>
-    <p class="hint">단축키: Space 재생·일시정지 · ←/→ 5초 이동 · F 전체 화면 · M 음소거 · P/N 이전화·다음화</p>
+    <p class="hint">단축키: Space 재생·일시정지 · ←/→ 5초 이동 · F 전체 화면 · M 음소거 · C 자막 켜기/끄기 · P/N 이전화·다음화</p>
     {% else %}
-    <div class="empty-state"><span class="mochi big" aria-hidden="true"><i></i><i></i></span><p>이 회차는 아직 재생할 영상이 없어요.</p></div>
+    <div class="empty-state"><img src="/static/icon.png" alt="" width="96" height="96"><p>이 회차는 아직 재생할 영상이 없어요.</p></div>
     {% endif %}
 
     <nav class="step-nav" aria-label="회차 이동">
       {% if previous_episode %}<a class="step prev" href="/episodes/{{ previous_episode.id }}"><small>이전화</small>{{ previous_episode.episode_number }}화 · {{ previous_episode.label }}</a>{% else %}<span></span>{% endif %}
       {% if next_episode %}<a class="step next" href="/episodes/{{ next_episode.id }}"><small>다음화</small>{{ next_episode.episode_number }}화 · {{ next_episode.label }}</a>{% endif %}
     </nav>
-
-    <details class="more">
-      <summary>자세히 · 번역과 원문</summary>
-      {% if playback_available %}<p class="actions"><a class="pill-button" href="/episodes/{{ episode.id }}">본편 보기</a><a class="pill-button" href="/episodes/{{ episode.id }}?view=original">인스타 원본 보기</a></p>{% endif %}
-      {% if showing_main %}<p>위아래 반복 화면을 잘라낸 본편이에요. 영상에 새겨진 기존 자막은 그대로 남아 있어요.</p>{% endif %}
-      {% if translation_notes %}<section class="panel"><h2>한국어 번역 안내</h2>{% for note in translation_notes %}<p>{{ note }}</p>{% endfor %}</section>{% endif %}
-      {% if comparison_error %}<p class="error">{{ comparison_error }}</p>{% endif %}
-      {% if comparison_enabled and comparison %}<section id="translation-comparison" class="panel"><h2>{{ episode.episode_number }}화 번역 비교</h2>
-      <p>위 플레이어에서 번역을 바꾸면 현재 위치에서 자막만 전환돼요.</p>
-      {% if api_pending %}<p role="status">API 번역은 아직 실행하지 않았어요.</p>{% else %}<p>API 모델: {{ comparison.variants.api.model }} · {{ comparison.variants.api.created_at }}</p>{% endif %}
-      <div class="table-wrap"><table class="translation-table"><thead><tr><th>시간</th><th>영어 원문</th><th>기존 번역</th><th>API 번역</th>{% if comparison.variants.raw %}<th>API · OCR 원문</th>{% endif %}</tr></thead><tbody>{% for row in comparison.rows %}<tr data-comparison-row><td><button type="button" class="pill-button small" data-seek-to="{{ row.start }}">{{ row.time }}</button></td><td>{{ row.text }}{% if row.raw_source != row.text %}<small>수정 전: {{ row.raw_source }}</small>{% endif %}</td><td>{{ row.direct or '아직 없음' }}</td><td>{{ row.api or '실행 대기' }}</td>{% if comparison.variants.raw %}<td>{{ row.raw or '아직 없음' }}</td>{% endif %}</tr>{% endfor %}</tbody></table></div>
-      {% if comparison.input.corrections %}<details><summary>OCR 원문 수정 내역 {{ comparison.input.corrections|length }}개</summary>{% for correction in comparison.input.corrections %}<p><b>{{ correction.source_index + 1 }}번</b> {{ correction.original }} → {{ correction.corrected }}<br>{{ correction.reason }}</p>{% endfor %}</details>{% endif %}
-      </section>{% endif %}
-      <section class="panel"><h2>저장된 파일</h2><p>원문 추출 방식: {{ metadata.get('extraction', {}).get('method', '아직 추출 전') }} · 자막 {{ metadata.get('cue_count', 0) }}개</p>
-        <div class="actions">{% for name in ['source.txt','en.srt','en.vtt'] %}<a class="pill-button small" href="/files/{{ episode.id }}/{{ name }}" target="_blank" rel="noreferrer">{{ name }}</a>{% endfor %}{% if has_korean %}<a class="pill-button small" href="/files/{{ episode.id }}/ko.vtt">한국어 VTT</a><a class="pill-button small" href="/files/{{ episode.id }}/ko.srt">한국어 SRT</a>{% endif %}</div>
-        {% if episode.source_url %}<p><a href="{{ episode.source_url }}" target="_blank" rel="noreferrer">인스타그램 원본 게시물 ↗</a></p>{% endif %}</section>
-      <section class="panel"><h2>영어 원문</h2><pre class="source">{{ source }}</pre>{% if episode.error %}<p class="error">{{ episode.error }}</p>{% endif %}</section>
-    </details>
   </div>
 
   {% if playlist %}<aside class="playlist" aria-label="회차 목록">

@@ -14,7 +14,6 @@ from pydantic import BaseModel
 
 from .config import Settings, load_settings
 from .db import Database
-from .translation_archive import comparison_data
 
 ROOT = Path(__file__).parent
 security = HTTPBasic(auto_error=False)
@@ -145,8 +144,7 @@ def create_app(settings: Settings | None = None):
         return {"queued": episode_id}
 
     @app.get("/episodes/{episode_id}", dependencies=[Depends(viewer)])
-    def detail(episode_id: str, request: Request, view: Literal["main", "original"] = "main",
-               translation: Literal["default", "direct", "api", "raw"] = "default"):
+    def detail(episode_id: str, request: Request, view: Literal["main", "original"] = "main"):
         episode = request.app.state.db.get(episode_id)
         if not episode:
             raise HTTPException(404)
@@ -154,45 +152,19 @@ def create_app(settings: Settings | None = None):
         metadata = {}
         if (directory / "metadata.json").is_file():
             metadata = json.loads((directory / "metadata.json").read_text(encoding="utf-8"))
-        source = (directory / "source.txt").read_text(encoding="utf-8") if (directory / "source.txt").is_file() else "아직 원문을 추출하지 않았어요."
         playback_available = (directory / "playback.mp4").is_file() and (directory / "playback.json").is_file()
         showing_main = playback_available and view == "main"
         _, caption_bottom, _ = caption_region(metadata, showing_main)
         korean = directory / "ko.vtt"
-        comparison = None
-        comparison_error = None
-        try:
-            comparison = comparison_data(directory)
-        except (ValueError, OSError, KeyError, TypeError):
-            comparison_error = "번역 비교 파일이 원문과 맞지 않아요. 입력과 번역 기록을 확인해 주세요."
-        options = []
-        for variant, manifest in (comparison or {}).get("variants", {}).items():
-            label = "기존 번역" if variant == "direct" else f"API · {manifest.get('model') or '모델 미기록'}"
-            if variant == "raw":
-                label = f"API · OCR 원문 · {manifest.get('model') or '모델 미기록'}"
-            options.append({"id": variant, "label": label, "file": f"ko.{variant}.vtt"})
-        if not options and korean.is_file() and korean.stat().st_size > 6:
-            options = [{"id": "default", "label": "한국어", "file": "ko.vtt"}]
-        available = {item["id"] for item in options}
-        default_variant = metadata.get("translation", {}).get("variant")
-        selected_translation = (translation if translation in available
-                                else default_variant if default_variant in available
-                                else options[0]["id"] if options else None)
-        comparison_enabled = bool(metadata.get("translation_comparison") or (comparison and "api" in comparison["variants"]))
         episodes = playlist(request)
         position = next((i for i, item in enumerate(episodes) if item["id"] == episode_id), None)
         previous_episode = episodes[position - 1] if position else None
         next_episode = episodes[position + 1] if position is not None and position + 1 < len(episodes) else None
         return templates.TemplateResponse(request=request, name="detail.html", context={
             "playlist": episodes, "previous_episode": previous_episode, "next_episode": next_episode,
-            "episode": episode, "metadata": metadata, "source": source,
-            "playback_available": playback_available, "showing_main": showing_main,
+            "episode": episode, "showing_main": showing_main,
             "video_file": "playback.mp4" if showing_main else metadata.get("video_file"),
-            "has_korean": bool(options), "translation_options": options,
-            "selected_translation": selected_translation, "comparison": comparison,
-            "comparison_enabled": comparison_enabled, "comparison_error": comparison_error,
-            "translation_notes": metadata.get("translation", {}).get("notes", []),
-            "api_pending": comparison_enabled and not (comparison and "api" in comparison["variants"]),
+            "has_korean": korean.is_file() and korean.stat().st_size > 6,
             "caption_bottom": caption_bottom,
         })
 

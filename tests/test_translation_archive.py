@@ -113,21 +113,24 @@ class TranslationArchiveTests(unittest.TestCase):
             translate(self.source, 'Episode', replace(self.settings, api_key=''))
         client.assert_not_called()
 
-    def test_comparison_page_and_variant_files_remain_protected_remotely(self):
+    def test_player_uses_only_default_track_and_variant_files_remain_protected_remotely(self):
         database = Database(self.settings.database)
         database.enqueue('example', '', 'Episode 382', episode_number=382, status='review')
-        save_json(self.directory / 'metadata.json', {'video_file':'original.mp4', 'translation_comparison': {'requested_model':'gpt-6-luna'}})
+        database.enqueue('previous', '', 'Episode 381', episode_number=381, status='review')
+        save_json(self.directory / 'metadata.json', {'video_file':'original.mp4'})
         save_translation(self.directory, 'direct', self.direct, '382화', make_default=True)
+        save_translation(self.directory, 'api', [Cue(1,3,'괜찮니?'),Cue(4,6,'5급?')], '382화', model='gpt-6.1-terra', make_default=True)
         app = create_app(self.settings)
         with TestClient(app, client=('127.0.0.1', 1234)) as client:
-            page = client.get('/episodes/example')
-            self.assertIn('382화 번역 비교', page.text)
-            self.assertIn('API 번역 · 대기 중', page.text)
+            page = client.get('/episodes/example').text
+            # One Korean track (the default ko.vtt) with an on/off switch; no version picker or comparison table.
+            self.assertEqual(page.count('data-korean-track'), 1)
+            self.assertIn('src="/files/example/ko.vtt"', page)
+            self.assertNotIn('data-translation-select', page)
+            self.assertNotIn('번역 비교', page)
+            self.assertIn('data-prev-url="/episodes/previous"', page)
+            self.assertIn('data-next-url=""', page)
             self.assertEqual(client.get('/files/example/ko.direct.vtt').status_code, 200)
-            save_translation(self.directory, 'api', [Cue(1,3,'괜찮니?'),Cue(4,6,'5급?')], '382화', model='gpt-6-luna')
-            page = client.get('/episodes/example?translation=api')
-            self.assertIn('value="api" selected', page.text)
-            self.assertIn('괜찮니?', page.text)
             self.assertEqual(client.get('/files/example/translation.api.audit.json').status_code, 404)
         with TestClient(app, client=('192.0.2.1', 1234)) as remote:
             self.assertEqual(remote.get('/files/example/ko.direct.vtt').status_code,401)
