@@ -252,7 +252,8 @@ class IngestionTests(unittest.TestCase):
     def test_admin_auth_and_cross_site_mutation_protection(self):
         with TestClient(create_app(self.settings)) as client:
             self.assertEqual(client.get("/healthz").status_code, 200)
-            self.assertEqual(client.get("/").status_code, 401)
+            self.assertEqual(client.get("/", follow_redirects=False).headers["location"], "/login?next=%2F")
+            self.assertEqual(client.get("/api/admin/status").status_code, 401)
             client.auth = ("admin", self.settings.admin_password)
             self.assertEqual(client.get("/").status_code, 200)
             self.assertEqual(client.post("/api/admin/scan", json={"mode": "backfill"}).status_code, 403)

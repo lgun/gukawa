@@ -70,7 +70,7 @@ docker compose logs -f worker
 
 - `/`: 회차 목록, `/episodes/<ID>`: 플레이어 (이전화·다음화, 회차 바로가기, 재생 목록, 전체 화면, 끝나면 다음화 자동 재생)
 - 단축키: Space 재생·일시정지, ←/→ 5초 이동, F 전체 화면, M 음소거, P/N 이전화·다음화
-- 모든 화면과 파일은 로그인이 필요하다. `admin` / `ADMIN_PASSWORD`는 관리자, `.env`의 `VIEWER_USERNAME` / `VIEWER_PASSWORD`는 감상 전용 계정(목록·플레이어만, `/admin` 불가)이다. `LOCAL_PREVIEW=true`는 같은 PC(127.0.0.1)에서만 로그인 없이 보는 개발용 설정이며 Docker에서는 적용되지 않는다.
+- 모든 화면과 파일은 로그인이 필요하다. 처음 접속하면 `/login` 로그인 페이지가 열리고, 로그인하면 30일 동안 유지되는 쿠키 세션이 만들어진다(브라우저 기본 로그인 팝업을 쓰지 않아 모든 브라우저에서 동작). `admin` / `ADMIN_PASSWORD`는 관리자, `.env`의 `VIEWER_USERNAME` / `VIEWER_PASSWORD`는 감상 전용 계정(목록·플레이어만, `/admin` 불가)이다. 세션 서명 키는 `data/session.key`에 자동 생성되며, 비밀번호를 바꾸면 그 계정의 기존 로그인은 풀린다. 같은 IP에서 10분 동안 10번 틀리면 잠시 막힌다. `LOCAL_PREVIEW=true`는 같은 PC(127.0.0.1)에서만 로그인 없이 보는 개발용 설정이며 Docker에서는 적용되지 않는다.
 
 데이터는 `./data`에 남으므로 `docker compose down` 후에도 유지된다. 백업은 `data/` 폴더를 복사하면 된다(SQLite 파일 포함, 복사 전 `docker compose stop` 권장).
 
