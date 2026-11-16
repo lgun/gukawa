@@ -28,6 +28,17 @@ class Database:
                 );
                 CREATE INDEX IF NOT EXISTS episode_status ON episodes(status, available_at);
                 CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS news (
+                    id TEXT PRIMARY KEY, source TEXT NOT NULL, kind TEXT NOT NULL,
+                    title TEXT NOT NULL, summary TEXT NOT NULL DEFAULT '',
+                    url TEXT NOT NULL, image TEXT NOT NULL DEFAULT '', price INTEGER,
+                    purchase_limit INTEGER, available INTEGER,
+                    published_at TEXT NOT NULL, seen_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS news_recent ON news(published_at DESC);
+                CREATE TABLE IF NOT EXISTS news_products (
+                    id TEXT PRIMARY KEY, available INTEGER NOT NULL, updated_at TEXT NOT NULL
+                );
             """)
 
     @contextmanager
@@ -146,8 +157,68 @@ class Database:
             return row[0] if row else default
 
     def consume_sync_request(self) -> str:
+        return self.pop_state("sync_requested")
+
+    def pop_state(self, key: str) -> str:
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            row = db.execute("SELECT value FROM state WHERE key='sync_requested'").fetchone()
-            db.execute("DELETE FROM state WHERE key='sync_requested'")
+            row = db.execute("SELECT value FROM state WHERE key=?", (key,)).fetchone()
+            db.execute("DELETE FROM state WHERE key=?", (key,))
             return row[0] if row else ""
+
+    # --- news -------------------------------------------------------------
+    NEWS_FIELDS = ("id", "source", "kind", "title", "summary", "url", "image", "price",
+                   "purchase_limit", "available", "published_at")
+
+    def add_news(self, item: dict) -> bool:
+        """Insert a news item once; later sightings only refresh stock and price."""
+        values = {key: item.get(key) for key in self.NEWS_FIELDS}
+        values["summary"] = values["summary"] or ""
+        values["image"] = values["image"] or ""
+        with self.connect() as db:
+            result = db.execute(
+                f"INSERT OR IGNORE INTO news ({','.join(values)}, seen_at) VALUES ({','.join('?' for _ in values)}, ?)",
+                (*values.values(), utc_now()))
+            if not result.rowcount and item.get("available") is not None:
+                db.execute("UPDATE news SET available=?, price=COALESCE(?, price) WHERE id=?",
+                           (item["available"], item.get("price"), item["id"]))
+        return bool(result.rowcount)
+
+    def news_ids(self, source: str) -> set:
+        with self.connect() as db:
+            return {row[0] for row in db.execute("SELECT id FROM news WHERE source=?", (source,))}
+
+    def set_news_image(self, news_id: str, image: str):
+        with self.connect() as db:
+            db.execute("UPDATE news SET image=? WHERE id=?", (image, news_id))
+
+    def news(self, *, source: str = "", kind: str = "", limit: int = 30, offset: int = 0):
+        where, args = ["1=1"], []
+        if source:
+            where.append("source=?")
+            args.append(source)
+        if kind:
+            where.append("kind=?")
+            args.append(kind)
+        with self.connect() as db:
+            rows = db.execute(f"SELECT * FROM news WHERE {' AND '.join(where)} "
+                              "ORDER BY published_at DESC, seen_at DESC, id LIMIT ? OFFSET ?",
+                              (*args, limit, offset)).fetchall()
+            return [dict(row) for row in rows]
+
+    def news_counts(self):
+        with self.connect() as db:
+            return {row[0]: row[1] for row in db.execute("SELECT source, COUNT(*) FROM news GROUP BY source")}
+
+    def product_states(self, source: str) -> dict:
+        prefix = source + ":"
+        with self.connect() as db:
+            return {row[0][len(prefix):]: bool(row[1]) for row in
+                    db.execute("SELECT id, available FROM news_products WHERE id LIKE ?", (prefix + "%",))}
+
+    def save_product_states(self, source: str, states: dict):
+        now = utc_now()
+        with self.connect() as db:
+            db.executemany("INSERT INTO news_products VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET "
+                           "available=excluded.available, updated_at=excluded.updated_at",
+                           [(f"{source}:{key}", int(value), now) for key, value in states.items()])

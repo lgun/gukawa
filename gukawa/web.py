@@ -1,5 +1,6 @@
 import base64
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
 import json
@@ -17,8 +18,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
+from . import shop as shopdata
 from .config import Settings, load_settings
 from .db import Database
+from .news import MEDIA_NAME, source_map
 
 ROOT = Path(__file__).parent
 security = HTTPBasic(auto_error=False)
@@ -47,6 +50,28 @@ def caption_region(metadata: dict, showing_main: bool) -> tuple[float, float, bo
         bottom = (bottom * source_height - crop["y"]) / crop["height"]
     bottom = min(1.0, max(0.05, bottom))
     return max(0.0, min(top, bottom - 0.03)), bottom, True
+
+
+KST = timezone(timedelta(hours=9))
+NEWS_KINDS = {"product": "신상품", "restock": "재입고", "notice": "공지", "post": "SNS"}
+PAGE_SIZE = 30
+
+
+def korean_date(value: str | None) -> str:
+    try:
+        moment = datetime.fromisoformat(value).astimezone(KST)
+    except (TypeError, ValueError):
+        return ""
+    now = datetime.now(KST)
+    if moment.date() == now.date():
+        return f"오늘 {moment:%H:%M}"
+    if moment.date() == (now - timedelta(days=1)).date():
+        return f"어제 {moment:%H:%M}"
+    return f"{moment.month}월 {moment.day}일" if moment.year == now.year else f"{moment.year}. {moment.month}. {moment.day}."
+
+
+def yen(value) -> str:
+    return f"¥{value:,}" if isinstance(value, int) else ""
 
 
 class LoginRequired(Exception):
@@ -136,6 +161,8 @@ def create_app(settings: Settings | None = None):
 
     app = FastAPI(title="구카와 수집 관리", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     templates = Jinja2Templates(directory=str(ROOT / "templates"))
+    templates.env.filters["kdate"] = korean_date
+    templates.env.filters["yen"] = yen
     app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 
     def check(settings: Settings, username: str, password: str) -> str | None:
@@ -181,7 +208,7 @@ def create_app(settings: Settings | None = None):
     @app.exception_handler(LoginRequired)
     async def login_required(request: Request, exc: LoginRequired):
         # Pages redirect to the login form; API and file requests get a plain 401 (no browser popup).
-        page = request.method == "GET" and not request.url.path.startswith(("/api/", "/files/"))
+        page = request.method == "GET" and not request.url.path.startswith(("/api/", "/files/", "/news-media/"))
         if page:
             target = request.url.path + (f"?{request.url.query}" if request.url.query else "")
             return RedirectResponse(f"/login?next={quote(target, safe='')}", status_code=303)
@@ -235,7 +262,9 @@ def create_app(settings: Settings | None = None):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "same-origin"
         response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; media-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
-        if not request.url.path.startswith("/static/"):
+        if request.url.path.startswith("/news-media/") and response.status_code == 200:
+            response.headers["Cache-Control"] = "private, max-age=604800, immutable"
+        elif not request.url.path.startswith("/static/"):
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -256,15 +285,111 @@ def create_app(settings: Settings | None = None):
             item["label"] = item["title_ko"] or item["title"]
         return episodes
 
+    def news_cards(request, items):
+        """Adds labels and the matching purchase guide; folds the identical notices the two sister shops post."""
+        sources = source_map(request.app.state.settings)
+        cards, notices = [], {}
+        for item in items:
+            name = sources[item["source"]].name if item["source"] in sources else item["source"]
+            key = (item["title"], item["published_at"][:10]) if item["kind"] == "notice" else None
+            if key in notices:
+                notices[key]["source_names"].append(name)
+                continue
+            card = {**item, "source_names": [name], "kind_label": NEWS_KINDS.get(item["kind"], item["kind"]),
+                    "shop": shopdata.shop_for_source(item["source"])}
+            if key:
+                notices[key] = card
+            cards.append(card)
+        return cards
+
+    def news_status(request):
+        db = request.app.state.db
+        try:
+            errors = json.loads(db.get_state("news_errors") or "{}")
+        except ValueError:
+            errors = {}
+        sources = source_map(request.app.state.settings)
+        errors = {sources[key].name if key in sources else key: message for key, message in errors.items()}
+        return {"last_sync": db.get_state("news_last_sync"), "errors": errors, "counts": db.news_counts()}
+
+    def fx_rates(request):
+        try:
+            return json.loads(request.app.state.db.get_state("fx_rates") or "{}")
+        except ValueError:
+            return {}
+
     @app.get("/", dependencies=[Depends(viewer)])
-    def index(request: Request, q: str = Query("", max_length=100)):
+    def home(request: Request):
+        episodes = playlist(request)
+        db = request.app.state.db
+        goods = sorted([*db.news(kind="restock", limit=4), *db.news(kind="product", limit=8)],
+                       key=lambda item: item["published_at"], reverse=True)
+        return templates.TemplateResponse(request=request, name="home.html", context={
+            "active": "home", "goods": news_cards(request, goods)[:8],
+            "notices": news_cards(request, sorted([*db.news(kind="notice", limit=8), *db.news(kind="post", limit=4)],
+                                                  key=lambda item: item["published_at"], reverse=True))[:4],
+            "episodes": list(reversed(episodes[-4:])), "total": len(episodes), "shops": shopdata.SHOPS,
+        })
+
+    @app.get("/videos", dependencies=[Depends(viewer)])
+    def videos(request: Request, q: str = Query("", max_length=100)):
         episodes = playlist(request)
         query = q.strip()
         shown = [item for item in episodes if not query or query in str(item["episode_number"]) or query in item["label"]]
-        return templates.TemplateResponse(request=request, name="index.html", context={
-            "episodes": shown, "total": len(episodes), "q": query,
-            "latest": episodes[-1] if episodes else None, "first": episodes[0] if episodes else None,
+        return templates.TemplateResponse(request=request, name="videos.html", context={
+            "active": "videos", "episodes": shown, "total": len(episodes), "q": query,
         })
+
+    @app.get("/news", dependencies=[Depends(viewer)])
+    def news(request: Request, source: str = Query("", max_length=60), kind: str = Query("", max_length=20),
+             page: int = Query(1, ge=1, le=1000)):
+        sources = source_map(request.app.state.settings)
+        source = source if source in sources else ""
+        kind = kind if kind in NEWS_KINDS else ""
+        items = request.app.state.db.news(source=source, kind=kind, limit=PAGE_SIZE + 1, offset=(page - 1) * PAGE_SIZE)
+        return templates.TemplateResponse(request=request, name="news.html", context={
+            "active": "news", "items": news_cards(request, items[:PAGE_SIZE]), "has_more": len(items) > PAGE_SIZE,
+            "page": page, "source": source, "kind": kind, "kinds": NEWS_KINDS, "sources": list(sources.values()),
+            "status": news_status(request), "links": shopdata.OTHER_SHOPS,
+        })
+
+    @app.get("/news-media/{name}", dependencies=[Depends(viewer)])
+    def news_media(name: str, request: Request):
+        if not MEDIA_NAME.fullmatch(name):
+            raise HTTPException(404)
+        path = request.app.state.settings.data_dir / "news-media" / name
+        if not path.is_file():
+            raise HTTPException(404)
+        return FileResponse(path)
+
+    def shop_page(request, name, **context):
+        data = {"shops": {key: {"name": shop["name"], "shipping": shop["shipping"], "free_over": shop["free_over"]}
+                          for key, shop in shopdata.SHOPS.items()},
+                "regions": shopdata.REGIONS, "categories": shopdata.CATEGORIES, "fx": fx_rates(request)}
+        return templates.TemplateResponse(request=request, name=name, context={
+            "active": "shop", "shops": shopdata.SHOPS, "shop_data": data, "checked": shopdata.CHECKED,
+            "profile_fields": shopdata.PROFILE_FIELDS, **context})
+
+    @app.get("/shop", dependencies=[Depends(viewer)])
+    def shop_home(request: Request):
+        return shop_page(request, "shop.html", routes=shopdata.ROUTES, steps=shopdata.FORWARDER_STEPS,
+                         customs=shopdata.CUSTOMS_NOTES, others=shopdata.OTHER_SHOPS)
+
+    @app.get("/shop/order", dependencies=[Depends(viewer)])
+    def shop_order(request: Request):
+        return shop_page(request, "order.html", customs=shopdata.CUSTOMS_NOTES)
+
+    @app.get("/shop/{key}", dependencies=[Depends(viewer)])
+    def shop_guide(key: str, request: Request):
+        shop = shopdata.SHOPS.get(key)
+        if not shop:
+            raise HTTPException(404)
+        db = request.app.state.db
+        recent = sorted([*db.news(source=shop["news_source"], kind="restock", limit=3),
+                         *db.news(source=shop["news_source"], kind="product", limit=6)],
+                        key=lambda item: item["published_at"], reverse=True)
+        return shop_page(request, "shop_site.html", key=key, shop=shop, routes=shopdata.ROUTES,
+                         fields=shopdata.SHOPIFY_FIELDS, recent=news_cards(request, recent)[:6])
 
     @app.get("/admin", dependencies=[Depends(admin)])
     def admin_page(request: Request, q: str = Query("", max_length=100), offset: int = Query(0, ge=0)):
@@ -274,6 +399,7 @@ def create_app(settings: Settings | None = None):
             "account": request.app.state.settings.instagram_username,
             "min_episode": request.app.state.settings.min_episode,
             "local_preview": request.app.state.settings.local_preview,
+            "news": news_status(request), "news_interval": request.app.state.settings.news_interval,
         })
 
     @app.get("/api/admin/status", dependencies=[Depends(admin)])
@@ -288,6 +414,11 @@ def create_app(settings: Settings | None = None):
     def scan(body: ScanRequest, request: Request):
         request.app.state.db.set_state("sync_requested", body.mode)
         return {"requested": body.mode}
+
+    @app.post("/api/admin/news", status_code=202, dependencies=[Depends(mutation)])
+    def request_news(request: Request):
+        request.app.state.db.set_state("news_requested", "1")
+        return {"requested": "news"}
 
     @app.post("/api/admin/episodes/{episode_id}/retry", dependencies=[Depends(mutation)])
     def retry(episode_id: str, request: Request):

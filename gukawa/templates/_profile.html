@@ -1,0 +1,12 @@
+{# The forwarder address lives only in this browser (localStorage); it is never sent to the server. #}
+<details class="more profile" data-profile-box>
+  <summary>내 배대지 주소 <small data-profile-state>저장 안 됨</small></summary>
+  <p>배대지가 알려준 일본 주소를 칸에 맞춰 한 번 넣어 두면, 쇼핑몰별 가이드에서 칸마다 복사할 수 있어요. 이 브라우저에만 저장되고 서버로 보내지 않아요.</p>
+  <form class="profile-form" data-profile-form autocomplete="off">
+    {% for key, label, hint in profile_fields %}<label><span>{{ label }}</span>
+      {% if key == "prefecture" %}<select name="{{ key }}"><option value="">선택</option>{% for region, prefectures in shop_data.regions.items() %}<optgroup label="{{ region }}">{% for name in prefectures %}<option>{{ name }}</option>{% endfor %}</optgroup>{% endfor %}</select>
+      {% else %}<input name="{{ key }}" placeholder="{{ hint }}" spellcheck="false">{% endif %}</label>{% endfor %}
+    <p class="muted">都道府県은 일본 내 배송비 계산에도 써요. 입력하는 대로 자동 저장돼요.</p>
+    <button type="button" class="pill-button small" data-profile-clear>지우기</button>
+  </form>
+</details>

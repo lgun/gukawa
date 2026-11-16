@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>주문 정리 · 구카와</title>
+{% include "_icons.html" %}
+<link rel="stylesheet" href="/static/viewer.css?v=5"><script src="/static/shop.js?v=1" defer></script></head>
+<body class="viewer">
+{% include "_topbar.html" %}
+<main class="home guide" data-order-page>
+  <p class="crumbs"><a href="/shop">구매 가이드</a> / 주문 정리</p>
+  <div class="page-head">
+    <h1>주문 정리</h1>
+    <p class="lede">살 상품을 쇼핑몰별로 모아 금액·수량 제한·면세 범위를 확인하고, 배대지 신청서에 붙여 넣을 목록을 만들어요. 목록은 이 브라우저에만 저장돼요.</p>
+  </div>
+
+  <section class="block" aria-labelledby="cart-title">
+    <div class="list-head"><h2 id="cart-title">담은 상품</h2><button type="button" class="pill-button small" data-cart-clear>모두 비우기</button></div>
+    <div data-cart-groups></div>
+    <div class="empty-state small" data-cart-empty><p>아직 담은 상품이 없어요. <a href="/news?kind=product">소식</a>에서 '주문 정리에 담기'를 누르거나 아래에서 직접 추가하세요.</p></div>
+  </section>
+
+  <section class="block" aria-labelledby="add-title">
+    <details class="more" data-add-box>
+      <summary id="add-title">상품 직접 추가</summary>
+      <form class="add-form" data-add-form>
+        <label><span>쇼핑몰</span><select name="shop">{% for key, shop in shops.items() %}<option value="{{ key }}">{{ shop.name }}</option>{% endfor %}<option value="other">기타</option></select></label>
+        <label class="wide"><span>상품명 (일본어 그대로)</span><input name="title" required></label>
+        <label class="wide"><span>상품 주소</span><input name="url" type="url" placeholder="https://"></label>
+        <label><span>단가 (엔, 세금 포함)</span><input name="price" type="number" min="0" step="1" inputmode="numeric" required></label>
+        <label><span>수량</span><input name="qty" type="number" min="1" step="1" value="1" inputmode="numeric"></label>
+        <label><span>1회 결제 제한 (있으면)</span><input name="limit" type="number" min="1" step="1" inputmode="numeric"></label>
+        <button class="pill-button primary" type="submit">추가</button>
+      </form>
+    </details>
+  </section>
+
+  <section class="block" aria-labelledby="total-title">
+    <h2 id="total-title">합계와 면세 확인</h2>
+    <div class="total-box" data-totals></div>
+    <details class="more">
+      <summary>환율</summary>
+      <form class="add-form" data-fx-form>
+        <label><span>1달러 = ? 엔</span><input name="usd_jpy" type="number" step="0.01" min="1" inputmode="decimal"></label>
+        <label><span>1달러 = ? 원</span><input name="usd_krw" type="number" step="0.01" min="1" inputmode="decimal"></label>
+        <p class="muted wide" data-fx-note></p>
+      </form>
+    </details>
+    <ul class="checks">{% for note in customs %}<li>{{ note }}</li>{% endfor %}</ul>
+  </section>
+
+  {% include "_profile.html" %}
+</main>
+<template id="group-template">
+  <section class="order-group">
+    <div class="list-head"><h3 data-group-name></h3><span class="group-actions"><a class="text-link" data-group-guide>구매 방법</a><button type="button" class="pill-button small" data-copy-form>신청서용 복사</button></span></div>
+    <div class="table-wrap"><table class="order-table">
+      <thead><tr><th>상품</th><th>영문명 (신청서용)</th><th>단가</th><th>수량</th><th>소계</th><th><span class="sr-only">삭제</span></th></tr></thead>
+      <tbody data-rows></tbody>
+      <tfoot><tr><td colspan="6" data-group-total></td></tr></tfoot>
+    </table></div>
+    <ul class="warnings" data-group-warnings></ul>
+  </section>
+</template>
+<script type="application/json" id="shop-data">{{ shop_data|tojson }}</script>
+<p class="toast" data-toast role="status" aria-live="polite" hidden></p>
+<footer class="foot">구카와</footer>
+</body></html>

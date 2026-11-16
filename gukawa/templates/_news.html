@@ -1,0 +1,24 @@
+{% macro news_card(item, show_summary=false) %}
+<article class="news-card kind-{{ item.kind }}">
+  <a class="news-thumb" href="{{ item.url }}" target="_blank" rel="noreferrer" tabindex="-1" aria-hidden="true">
+    {% if item.image %}<img src="/news-media/{{ item.image }}" alt="" loading="lazy">{% else %}<img class="thumb-icon" src="/static/icon.png" alt="">{% endif %}
+    <span class="badge kind-badge">{{ item.kind_label }}</span>
+  </a>
+  <div class="news-body">
+    <p class="news-meta"><span>{{ item.source_names|join(" · ") }}</span><time datetime="{{ item.published_at }}">{{ item.published_at|kdate }}</time></p>
+    <h3 class="news-title" lang="ja"><a href="{{ item.url }}" target="_blank" rel="noreferrer">{{ item.title }}</a></h3>
+    {% if item.price is not none or item.purchase_limit or item.available == 0 %}<p class="news-tags">
+      {% if item.price is not none %}<b>{{ item.price|yen }}</b>{% endif %}
+      {% if item.purchase_limit %}<span class="chip">1회 결제 {{ item.purchase_limit }}개까지</span>{% endif %}
+      {% if item.available == 0 %}<span class="chip soldout">품절</span>{% endif %}
+    </p>{% endif %}
+    {% if show_summary and item.summary and item.kind in ("notice", "post") %}<p class="news-summary" lang="ja">{{ item.summary|truncate(140) }}</p>{% endif %}
+    <div class="news-actions">
+      {% if item.kind in ("product", "restock") and item.shop %}<button type="button" class="pill-button small" data-add-cart
+        data-id="{{ item.id }}" data-shop="{{ item.shop }}" data-title="{{ item.title }}"
+        data-url="{{ item.url }}" data-price="{{ item.price if item.price is not none else '' }}" data-limit="{{ item.purchase_limit or '' }}">주문 정리에 담기</button>{% endif %}
+      {% if item.shop %}<a class="text-link" href="/shop/{{ item.shop }}">구매 방법</a>{% endif %}
+    </div>
+  </div>
+</article>
+{% endmacro %}

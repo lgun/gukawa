@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>소식 · 구카와</title>
+{% include "_icons.html" %}
+<link rel="stylesheet" href="/static/viewer.css?v=5"><script src="/static/shop.js?v=1" defer></script></head>
+<body class="viewer">
+{% from "_news.html" import news_card %}
+{% include "_topbar.html" %}
+<main class="home">
+  <div class="page-head">
+    <h1>치이카와 소식</h1>
+    <p class="lede">공식 숍의 신상품·재입고·공지를 모아요. 마지막 확인 {{ status.last_sync|kdate or "아직 없음" }}.</p>
+  </div>
+
+  <nav class="filters" aria-label="종류">
+    <a href="/news{% if source %}?source={{ source }}{% endif %}"{% if not kind %} aria-current="page"{% endif %}>전체</a>
+    {% for key, label in kinds.items() %}<a href="/news?kind={{ key }}{% if source %}&source={{ source }}{% endif %}"{% if kind == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+  </nav>
+  <nav class="filters sub" aria-label="출처">
+    <a href="/news{% if kind %}?kind={{ kind }}{% endif %}"{% if not source %} aria-current="page"{% endif %}>모든 출처</a>
+    {% for item in sources %}<a href="/news?source={{ item.key }}{% if kind %}&kind={{ kind }}{% endif %}"{% if source == item.key %} aria-current="page"{% endif %}>{{ item.name }}</a>{% endfor %}
+  </nav>
+
+  {% if items %}
+  <div class="news-list">{% for item in items %}{{ news_card(item, show_summary=true) }}{% endfor %}</div>
+  <nav class="pager" aria-label="페이지">
+    {% if page > 1 %}<a class="pill-button" href="/news?page={{ page - 1 }}{% if kind %}&kind={{ kind }}{% endif %}{% if source %}&source={{ source }}{% endif %}">← 최근</a>{% endif %}
+    {% if has_more %}<a class="pill-button" href="/news?page={{ page + 1 }}{% if kind %}&kind={{ kind }}{% endif %}{% if source %}&source={{ source }}{% endif %}">이전 소식 →</a>{% endif %}
+  </nav>
+  {% else %}
+  <div class="empty-state"><img src="/static/icon.png" alt="" width="96" height="96"><p>아직 모은 소식이 없어요. 워커가 실행 중이면 곧 채워져요.</p></div>
+  {% endif %}
+
+  {% if status.errors %}<details class="more"><summary>확인하지 못한 출처 {{ status.errors|length }}곳</summary>
+    <ul class="plain">{% for name, message in status.errors.items() %}<li><b>{{ name }}</b> · {{ message }}</li>{% endfor %}</ul>
+  </details>{% endif %}
+
+  <section class="block" aria-labelledby="links-title">
+    <h2 id="links-title" class="small-title">직접 확인할 곳</h2>
+    <p class="muted">X(트위터)와 아래 사이트는 자동으로 가져올 수 없어서 바로가기만 둬요. RSS 주소가 있으면 <code>NEWS_FEEDS</code>에 추가하면 이 목록에 같이 모여요.</p>
+    <ul class="link-list">
+      <li><a href="https://x.com/ngnchiikawa" target="_blank" rel="noreferrer">나가노 (작가) X</a></li>
+      <li><a href="https://x.com/chiikawa_kouhou" target="_blank" rel="noreferrer">치이카와 공식 홍보 X</a></li>
+      <li><a href="https://www.instagram.com/chiikawa.anime/" target="_blank" rel="noreferrer">치이카와 애니메이션 인스타그램</a></li>
+      {% for name, url, note in links %}<li><a href="{{ url }}" target="_blank" rel="noreferrer">{{ name }}</a> <small>{{ note }}</small></li>{% endfor %}
+    </ul>
+  </section>
+</main>
+<p class="toast" data-toast role="status" aria-live="polite" hidden></p>
+<footer class="foot">구카와</footer>
+</body></html>

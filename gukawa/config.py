@@ -32,6 +32,12 @@ class Settings:
     min_confidence: float = 0.75
     max_video_seconds: int = 600
     max_video_bytes: int = 524288000
+    news_sync: bool = True
+    news_interval: int = 1800
+    # Extra RSS/Atom feeds as (name, url), e.g. an RSSHub address for an X account.
+    news_feeds: tuple = ()
+    # Instagram accounts whose posts appear in the news (uses the same login cookies).
+    news_instagram: tuple = ()
 
     def __post_init__(self):
         if self.min_episode < 1:
@@ -48,10 +54,18 @@ class Settings:
             raise ValueError("Invalid OCR confidence or retry limit")
         if self.max_video_seconds <= 0 or self.max_video_bytes <= 0:
             raise ValueError("Video limits must be positive")
+        if self.news_interval < 600:
+            raise ValueError("NEWS_INTERVAL_SECONDS must be >= 600")
+        for name, url in self.news_feeds:
+            if not name or not url.startswith(("https://", "http://")):
+                raise ValueError("NEWS_FEEDS entries look like 이름|https://주소")
+        if not all(re.fullmatch(r"[A-Za-z0-9_.]{1,30}", account) for account in self.news_instagram):
+            raise ValueError("Invalid NEWS_INSTAGRAM_ACCOUNTS")
         if not re.fullmatch(r"[A-Za-z0-9_.]{1,30}", self.instagram_username):
             raise ValueError("Invalid Instagram username")
         self.data_dir.mkdir(parents=True, exist_ok=True)
         (self.data_dir / "episodes").mkdir(exist_ok=True)
+        (self.data_dir / "news-media").mkdir(exist_ok=True)
 
     @property
     def database(self) -> Path:
@@ -88,4 +102,18 @@ def load_settings() -> Settings:
         min_confidence=float(os.getenv("OCR_MIN_CONFIDENCE", "0.75")),
         max_video_seconds=int(os.getenv("MAX_VIDEO_SECONDS", "600")),
         max_video_bytes=int(os.getenv("MAX_VIDEO_BYTES", "524288000")),
+        news_sync=flag("NEWS_SYNC", "true"),
+        news_interval=int(os.getenv("NEWS_INTERVAL_SECONDS", "1800")),
+        news_feeds=parse_feeds(os.getenv("NEWS_FEEDS", "")),
+        news_instagram=tuple(item.strip().lstrip("@") for item in os.getenv("NEWS_INSTAGRAM_ACCOUNTS", "").split(",") if item.strip()),
     )
+
+
+def parse_feeds(value: str) -> tuple:
+    """'이름|https://주소, 이름2|https://주소2' -> (('이름', 'https://주소'), ...)"""
+    feeds = []
+    for entry in value.split(","):
+        if entry.strip():
+            name, _, url = entry.partition("|")
+            feeds.append((name.strip(), url.strip()))
+    return tuple(feeds)

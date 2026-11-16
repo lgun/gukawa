@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{ shop.name }} 구매 방법 · 구카와</title>
+{% include "_icons.html" %}
+<link rel="stylesheet" href="/static/viewer.css?v=5"><script src="/static/shop.js?v=1" defer></script></head>
+<body class="viewer">
+{% from "_news.html" import news_card %}
+{% include "_topbar.html" %}
+<main class="home guide">
+  <p class="crumbs"><a href="/shop">구매 가이드</a> / {{ shop.name }}</p>
+  <div class="page-head">
+    <h1>{{ shop.name }} <small lang="ja">{{ shop.ja }}</small></h1>
+    <p class="lede">{{ shop.summary }}</p>
+    <p class="hero-actions">
+      <a class="pill-button primary" href="{{ shop.url }}" target="_blank" rel="noreferrer">쇼핑몰 열기 ↗</a>
+      <a class="pill-button" href="/shop/order">주문 정리</a>
+      <a class="pill-button" href="{{ shop.guide_url }}" target="_blank" rel="noreferrer">원문 이용 안내 ↗</a>
+    </p>
+  </div>
+
+  <section class="block" aria-labelledby="facts-title">
+    <h2 id="facts-title">한눈에 보기</h2>
+    <dl class="facts">{% for label, value in shop.facts %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}</dl>
+    <p class="muted">{{ checked }} 기준. 바뀌었을 수 있으니 큰 주문 전에는 원문 안내를 확인하세요.</p>
+  </section>
+
+  <section class="block" aria-labelledby="route-title">
+    <h2 id="route-title">한국으로 받는 방법</h2>
+    <div class="route-grid">{% for route in shop.routes %}<article class="card">
+      <h3>{{ routes[route].title }}</h3><p>{{ routes[route].body }}</p><p class="muted">이럴 때 좋아요: {{ routes[route].good }}</p>
+      {% if route == "global-e" and shop.global_e_url %}<a class="text-link" href="{{ shop.global_e_url }}" target="_blank" rel="noreferrer">국제 배송 안내 원문 ↗</a>{% endif %}
+    </article>{% endfor %}</div>
+    {% if "global-e" not in shop.routes %}<p class="muted">이 숍은 해외 직배송 안내를 찾지 못했어요. 배대지로 받는 것을 기준으로 안내해요.</p>{% endif %}
+  </section>
+
+  <section class="block" aria-labelledby="address-title">
+    <h2 id="address-title">배대지 주소 입력 (결제 화면 순서)</h2>
+    <p class="muted">결제 화면(チェックアウト)의 배송지 칸 순서예요. 오른쪽 버튼을 누르면 저장한 배대지 주소가 복사돼요.</p>
+    <ol class="field-list" data-copy-fields>
+      {% for key, label, hint in fields %}<li><span class="field-label"><b lang="ja">{{ label }}</b><small>{{ hint }}</small></span>
+        {% if key == "country" %}<span class="field-value" lang="ja">日本</span>
+        {% else %}<span class="field-value" data-field-value="{{ key }}">—</span><button type="button" class="pill-button small" data-copy-field="{{ key }}">복사</button>{% endif %}</li>{% endfor %}
+    </ol>
+    {% include "_profile.html" %}
+    {% if shop.shipping %}<details class="more"><summary>일본 내 배송비 (주문 {{ shop.free_over|yen }} 미만)</summary>
+      <table class="mini-table"><tbody>{% for region, fee in shop.shipping.items() %}<tr data-region-row="{{ region }}"><th lang="ja">{{ region }}</th><td>{{ fee|yen }}</td></tr>{% endfor %}</tbody></table>
+      <p class="muted" data-region-note></p>
+    </details>{% endif %}
+  </section>
+
+  <section class="block" aria-labelledby="caution-title">
+    <h2 id="caution-title">주의할 점</h2>
+    <ul class="checks">{% for note in shop.cautions %}<li>{{ note }}</li>{% endfor %}</ul>
+  </section>
+
+  <section class="block" aria-labelledby="flow-title">
+    <h2 id="flow-title">배대지로 받는 순서</h2>
+    <ol class="steps">{% for title, body in steps %}<li><b>{{ title }}</b><p>{{ body }}</p></li>{% endfor %}</ol>
+  </section>
+
+  {% if recent %}<section class="block" aria-labelledby="recent-title">
+    <div class="list-head"><h2 id="recent-title">이 숍의 새 상품</h2><a class="text-link" href="/news?source={{ shop.news_source }}">전체 보기</a></div>
+    <div class="news-grid">{% for item in recent %}{{ news_card(item) }}{% endfor %}</div>
+  </section>{% endif %}
+</main>
+<script type="application/json" id="shop-data">{{ shop_data|tojson }}</script>
+<p class="toast" data-toast role="status" aria-live="polite" hidden></p>
+<footer class="foot">구카와</footer>
+</body></html>

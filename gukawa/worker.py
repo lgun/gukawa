@@ -8,6 +8,7 @@ from filelock import FileLock, Timeout
 
 from .config import load_settings
 from .db import Database, utc_now
+from .news import collect as collect_news
 from .pipeline import process_episode, reconcile
 from .source import InstagramSource, SourceError, eligible_episode
 
@@ -58,6 +59,21 @@ def run():
             db.set_state("worker_heartbeat", utc_now())
             stopping.wait(15)
 
+    def news():
+        # News runs beside the episode queue so a long OCR/translation job never delays it.
+        last = db.get_state("news_last_attempt")
+        next_news = datetime.fromisoformat(last).timestamp() + settings.news_interval if last else 0
+        while not stopping.is_set():
+            requested = db.pop_state("news_requested")
+            if requested or (settings.news_sync and time.time() >= next_news):
+                try:
+                    collect_news(db, settings)
+                except Exception:
+                    log.exception("News collection failed")
+                    db.set_state("news_errors", '{"_": "소식 확인 중 오류가 발생했어요."}')
+                next_news = time.time() + settings.news_interval
+            stopping.wait(5)
+
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     try:
@@ -66,6 +82,8 @@ def run():
             reconcile(db, settings)
             thread = Thread(target=heartbeat, daemon=True)
             thread.start()
+            news_thread = Thread(target=news, daemon=True)
+            news_thread.start()
             last_attempt = db.get_state("last_sync_attempt")
             next_sync = datetime.fromisoformat(last_attempt).timestamp() + settings.sync_interval if last_attempt else 0
             log.info("Worker started; mode=%s, auto-sync=%s", settings.processing_mode, settings.auto_sync)
@@ -88,6 +106,7 @@ def run():
             finally:
                 stopping.set()
                 thread.join(timeout=20)
+                news_thread.join(timeout=30)
                 db.set_state("worker_heartbeat", "")
     except Timeout:
         raise SystemExit("다른 워커가 실행 중이에요. 워커는 하나만 실행해 주세요.") from None

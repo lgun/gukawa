@@ -1,0 +1,8 @@
+<header class="topbar">
+  <a class="logo" href="/"><img class="logo-icon" src="/static/icon.png" alt="" width="40" height="40">구카와</a>
+  <nav class="topnav" aria-label="주요 메뉴">
+    {% for path, key, label in [("/", "home", "홈"), ("/news", "news", "소식"), ("/videos", "videos", "영상"), ("/shop", "shop", "구매")] %}<a href="{{ path }}"{% if active == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+    {% if request.state.role != "viewer" %}<a class="nav-extra" href="/admin">관리</a>{% endif %}
+    {% if request.cookies.get("gukawa_session") %}<form class="logout-form nav-extra" method="post" action="/logout"><button type="submit">로그아웃</button></form>{% endif %}
+  </nav>
+</header>

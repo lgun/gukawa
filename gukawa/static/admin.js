@@ -8,12 +8,15 @@ async function send(path, body) {
     throw new Error(typeof data.detail === 'string' ? data.detail : '요청을 처리하지 못했어요.');
   }
 }
-document.querySelectorAll('[data-scan], [data-retry]').forEach(button => {
+document.querySelectorAll('[data-scan], [data-retry], [data-news]').forEach(button => {
   button.addEventListener('click', async () => {
     const notice = document.querySelector('#notice');
     button.disabled = true;
     try {
-      if (button.dataset.scan) {
+      if ('news' in button.dataset) {
+        await send('/api/admin/news', {});
+        notice.textContent = '소식 확인을 요청했어요. 워커가 곧 확인해요.';
+      } else if (button.dataset.scan) {
         await send('/api/admin/scan', {mode: button.dataset.scan});
         notice.textContent = '확인을 요청했어요. 실행 중인 워커가 작업을 시작해요.';
       } else {

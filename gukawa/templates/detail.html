@@ -2,12 +2,9 @@
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>구카와</title>
 {% include "_icons.html" %}
-<link rel="stylesheet" href="/static/viewer.css?v=4"><link rel="stylesheet" href="/static/player.css?v=viewer-8"><script src="/static/player.js?v=viewer-8" defer></script></head>
+<link rel="stylesheet" href="/static/viewer.css?v=5"><link rel="stylesheet" href="/static/player.css?v=viewer-8"><script src="/static/player.js?v=viewer-8" defer></script></head>
 <body class="viewer">
-<header class="topbar">
-  <a class="logo" href="/"><img class="logo-icon" src="/static/icon.png" alt="" width="40" height="40">구카와</a>
-  <nav class="topnav" aria-label="주요 메뉴"><a href="/">회차 목록</a>{% if request.state.role != "viewer" %}<a href="/admin">관리</a>{% endif %}{% if request.cookies.get("gukawa_session") %}<form class="logout-form" method="post" action="/logout"><button type="submit">로그아웃</button></form>{% endif %}</nav>
-</header>
+{% set active = "videos" %}{% include "_topbar.html" %}
 <main class="watch">
   <div class="watch-main">
     <div class="watch-head">
@@ -32,7 +29,7 @@
         <div class="end-card" data-end-card hidden>
           <img class="end-icon" src="/static/icon.png" alt="" width="72" height="72">
           {% if next_episode %}<p>다음 화로 넘어갈까요?</p><a class="pill-button primary" href="/episodes/{{ next_episode.id }}" data-next-link>{{ next_episode.episode_number }}화 보기 ▶</a>
-          <p class="countdown" data-countdown></p>{% else %}<p>가장 최신 화예요.</p><a class="pill-button" href="/">회차 목록으로</a>{% endif %}
+          <p class="countdown" data-countdown></p>{% else %}<p>가장 최신 화예요.</p><a class="pill-button" href="/videos">회차 목록으로</a>{% endif %}
           <button type="button" class="pill-button" data-replay>다시 보기</button>
         </div>
       </div>

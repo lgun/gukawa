@@ -107,6 +107,7 @@ def main():
     retry.add_argument("id", nargs="?")
     retry.add_argument("--failed", action="store_true")
     retry.add_argument("--reextract", action="store_true", help="OCR/자막 추출 결과와 번역 캐시를 초기화")
+    commands.add_parser("news", help="치이카와 소식(신상품·재입고·공지)을 지금 한 번 확인")
     commands.add_parser("status")
     check = commands.add_parser("verify", help="원본·원문·타임코드 저장 검사")
     check.add_argument("--checksum", action="store_true")
@@ -231,6 +232,10 @@ def main():
                         (directory / name).unlink(missing_ok=True)
                 count += db.transition(episode["id"], allowed, "queued", reset=True)
             print(f"다시 등록한 작업: {count}개")
+    elif args.command == "news":
+        from .news import collect
+        print(json.dumps({"added": collect(db, settings), "errors": json.loads(db.get_state("news_errors") or "{}")},
+                         ensure_ascii=False, indent=2))
     elif args.command == "status":
         print(json.dumps({"counts": db.counts(), **{key: db.get_state(key) for key in ("last_sync", "sync_error", "backfill_complete", "worker_heartbeat", "scan_mode", "scan_added")}}, ensure_ascii=False, indent=2))
     elif args.command == "verify":

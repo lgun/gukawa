@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>구카와</title>
+{% include "_icons.html" %}
+<link rel="stylesheet" href="/static/viewer.css?v=5"><script src="/static/shop.js?v=1" defer></script></head>
+<body class="viewer">
+{% from "_news.html" import news_card %}
+{% include "_topbar.html" %}
+<main class="home">
+  <nav class="hub" aria-label="바로가기">
+    <a class="hub-tile tile-news" href="/news"><b>소식</b><span>공식 숍 신상품·재입고·공지</span></a>
+    <a class="hub-tile tile-videos" href="/videos"><b>영상</b><span>한국어 자막 {{ total }}화</span></a>
+    <a class="hub-tile tile-shop" href="/shop"><b>구매</b><span>배대지·해외배송 가이드</span></a>
+  </nav>
+
+  <section class="block" aria-labelledby="goods-title">
+    <div class="list-head"><h2 id="goods-title">새 굿즈 · 재입고</h2><a class="text-link" href="/news?kind=product">전체 보기</a></div>
+    {% if goods %}<div class="news-grid">{% for item in goods %}{{ news_card(item) }}{% endfor %}</div>
+    {% else %}<div class="empty-state small"><p>아직 모은 소식이 없어요. 워커가 30분마다 공식 숍을 확인해요.</p></div>{% endif %}
+  </section>
+
+  {% if notices %}<section class="block" aria-labelledby="notice-title">
+    <div class="list-head"><h2 id="notice-title">공지 · 소식</h2><a class="text-link" href="/news?kind=notice">전체 보기</a></div>
+    <div class="news-list">{% for item in notices %}{{ news_card(item) }}{% endfor %}</div>
+  </section>{% endif %}
+
+  <section class="block" aria-labelledby="video-title">
+    <div class="list-head"><h2 id="video-title">최신 영상</h2><a class="text-link" href="/videos">전체 {{ total }}화</a></div>
+    {% if episodes %}<ol class="episode-grid">
+      {% for item in episodes %}<li><a class="episode-card" href="/episodes/{{ item.id }}">
+        <span class="thumb">{% if item.poster %}<img src="/files/{{ item.id }}/playback.jpg" alt="" loading="lazy">{% else %}<img class="thumb-icon" src="/static/icon.png" alt="">{% endif %}<span class="badge">{{ item.episode_number }}화</span></span>
+        <span class="card-title">{{ item.label }}</span>
+      </a></li>{% endfor %}
+    </ol>{% else %}<div class="empty-state small"><p>아직 한국어 자막이 준비된 회차가 없어요.</p></div>{% endif %}
+  </section>
+
+  <section class="block" aria-labelledby="shop-title">
+    <div class="list-head"><h2 id="shop-title">쇼핑몰별 구매 방법</h2><a class="text-link" href="/shop/order">주문 정리</a></div>
+    <div class="shop-cards">{% for key, shop in shops.items() %}<a class="shop-card" href="/shop/{{ key }}"><b>{{ shop.name }}</b><span lang="ja">{{ shop.ja }}</span><small>{{ shop.summary }}</small></a>{% endfor %}</div>
+  </section>
+</main>
+<p class="toast" data-toast role="status" aria-live="polite" hidden></p>
+<footer class="foot">구카와</footer>
+</body></html>

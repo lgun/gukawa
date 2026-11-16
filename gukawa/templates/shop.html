@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>구매 가이드 · 구카와</title>
+{% include "_icons.html" %}
+<link rel="stylesheet" href="/static/viewer.css?v=5"><script src="/static/shop.js?v=1" defer></script></head>
+<body class="viewer">
+{% include "_topbar.html" %}
+<main class="home guide">
+  <div class="page-head">
+    <h1>구매 가이드</h1>
+    <p class="lede">일본 공식 숍에서 사서 한국으로 받는 방법을 쇼핑몰별로 정리했어요. 쇼핑몰 정보는 {{ checked }}에 각 숍의 이용 안내에서 확인했어요.</p>
+    <p class="hero-actions"><a class="pill-button primary" href="/shop/order">주문 정리 열기</a></p>
+  </div>
+
+  <section class="block" aria-labelledby="shops-title">
+    <h2 id="shops-title">쇼핑몰 고르기</h2>
+    <div class="shop-cards">{% for key, shop in shops.items() %}<a class="shop-card" href="/shop/{{ key }}">
+      <b>{{ shop.name }}</b><span lang="ja">{{ shop.ja }}</span><small>{{ shop.summary }}</small>
+      <span class="route-tags">{% for route in shop.routes %}<span class="chip">{{ routes[route].title }}</span>{% endfor %}</span>
+    </a>{% endfor %}</div>
+  </section>
+
+  <section class="block" aria-labelledby="route-title">
+    <h2 id="route-title">받는 방법 두 가지</h2>
+    <div class="route-grid">{% for key, route in routes.items() %}<article class="card">
+      <h3>{{ route.title }}</h3><p>{{ route.body }}</p><p class="muted">이럴 때 좋아요: {{ route.good }}</p>
+    </article>{% endfor %}</div>
+  </section>
+
+  <section class="block" aria-labelledby="steps-title">
+    <h2 id="steps-title">배대지로 받는 순서</h2>
+    <ol class="steps">{% for title, body in steps %}<li><b>{{ title }}</b><p>{{ body }}</p></li>{% endfor %}</ol>
+    {% include "_profile.html" %}
+  </section>
+
+  <section class="block" aria-labelledby="customs-title">
+    <h2 id="customs-title">통관 · 세금 주의</h2>
+    <ul class="checks">{% for note in customs %}<li>{{ note }}</li>{% endfor %}</ul>
+    <p class="muted">세율·기준은 바뀔 수 있어요. 큰 금액이면 관세청 안내를 한 번 더 확인하세요.</p>
+  </section>
+
+  <section class="block" aria-labelledby="other-title">
+    <h2 id="other-title" class="small-title">그 밖의 공식 사이트</h2>
+    <ul class="link-list">{% for name, url, note in others %}<li><a href="{{ url }}" target="_blank" rel="noreferrer">{{ name }}</a> <small>{{ note }}</small></li>{% endfor %}</ul>
+  </section>
+</main>
+<script type="application/json" id="shop-data">{{ shop_data|tojson }}</script>
+<p class="toast" data-toast role="status" aria-live="polite" hidden></p>
+<footer class="foot">구카와</footer>
+</body></html>
