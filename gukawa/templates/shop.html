@@ -2,14 +2,14 @@
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>구매 가이드 · 구카와</title>
 {% include "_icons.html" %}
-<link rel="stylesheet" href="/static/viewer.css?v=5"><script src="/static/shop.js?v=1" defer></script></head>
+<link rel="stylesheet" href="/static/viewer.css?v=6"><script src="/static/shop.js?v=2" defer></script></head>
 <body class="viewer">
 {% include "_topbar.html" %}
 <main class="home guide">
   <div class="page-head">
     <h1>구매 가이드</h1>
     <p class="lede">일본 공식 숍에서 사서 한국으로 받는 방법을 쇼핑몰별로 정리했어요. 쇼핑몰 정보는 {{ checked }}에 각 숍의 이용 안내에서 확인했어요.</p>
-    <p class="hero-actions"><a class="pill-button primary" href="/shop/order">주문 정리 열기</a></p>
+    <p class="hero-actions"><a class="pill-button primary" href="/shop/forwarders">배대지 비교</a><a class="pill-button" href="/shop/order">주문 정리 열기</a></p>
   </div>
 
   <section class="block" aria-labelledby="shops-title">
@@ -25,6 +25,12 @@
     <div class="route-grid">{% for key, route in routes.items() %}<article class="card">
       <h3>{{ route.title }}</h3><p>{{ route.body }}</p><p class="muted">이럴 때 좋아요: {{ route.good }}</p>
     </article>{% endfor %}</div>
+  </section>
+
+  <section class="block" aria-labelledby="fw-title">
+    <div class="list-head"><h2 id="fw-title">배대지 고르기</h2><a class="text-link" href="/shop/forwarders">전체 비교</a></div>
+    <p class="muted">1kg · 치이카와 마켓 5,000엔 주문 기준, 일본 내 배송비까지 더한 금액이에요.</p>
+    <ol class="fw-top">{% for row in fw_top %}<li><b>{{ row.forwarder.name }}</b> <span>{{ row.method.label }} · {{ row.forwarder.warehouses }}</span><strong>{{ row.total_won|won if row.total_won is not none else "—" }}</strong></li>{% endfor %}</ol>
   </section>
 
   <section class="block" aria-labelledby="steps-title">

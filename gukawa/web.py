@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
+from . import forwarders
 from . import shop as shopdata
 from .config import Settings, load_settings
 from .db import Database
@@ -163,6 +164,7 @@ def create_app(settings: Settings | None = None):
     templates = Jinja2Templates(directory=str(ROOT / "templates"))
     templates.env.filters["kdate"] = korean_date
     templates.env.filters["yen"] = yen
+    templates.env.filters["won"] = lambda value: f"{value:,}원" if isinstance(value, int) else ""
     app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 
     def check(settings: Settings, username: str, password: str) -> str | None:
@@ -365,19 +367,36 @@ def create_app(settings: Settings | None = None):
     def shop_page(request, name, **context):
         data = {"shops": {key: {"name": shop["name"], "shipping": shop["shipping"], "free_over": shop["free_over"]}
                           for key, shop in shopdata.SHOPS.items()},
-                "regions": shopdata.REGIONS, "categories": shopdata.CATEGORIES, "fx": fx_rates(request)}
+                "regions": shopdata.REGIONS, "categories": shopdata.CATEGORIES, "fx": fx_rates(request),
+                **forwarders.client_data()}
         return templates.TemplateResponse(request=request, name=name, context={
             "active": "shop", "shops": shopdata.SHOPS, "shop_data": data, "checked": shopdata.CHECKED,
             "profile_fields": shopdata.PROFILE_FIELDS, **context})
 
     @app.get("/shop", dependencies=[Depends(viewer)])
     def shop_home(request: Request):
+        fx = fx_rates(request)
+        won_per_yen = fx["usd_krw"] / fx["usd_jpy"] if fx.get("usd_krw") and fx.get("usd_jpy") else None
         return shop_page(request, "shop.html", routes=shopdata.ROUTES, steps=shopdata.FORWARDER_STEPS,
-                         customs=shopdata.CUSTOMS_NOTES, others=shopdata.OTHER_SHOPS)
+                         customs=shopdata.CUSTOMS_NOTES, others=shopdata.OTHER_SHOPS,
+                         fw_top=forwarders.compare(1.0, subtotal=5000, won_per_yen=won_per_yen)[:3])
 
     @app.get("/shop/order", dependencies=[Depends(viewer)])
     def shop_order(request: Request):
         return shop_page(request, "order.html", customs=shopdata.CUSTOMS_NOTES)
+
+    @app.get("/shop/forwarders", dependencies=[Depends(viewer)])
+    def shop_forwarders(request: Request, weight: float = Query(1.0, ge=0.1, le=forwarders.MAX_WEIGHT),
+                        kind: str = Query("", max_length=10), shop: str = Query("chiikawamarket", max_length=40),
+                        subtotal: int = Query(5000, ge=0, le=10_000_000)):
+        kind = kind if kind in {"air", "sea"} else ""
+        shop = shop if shop in shopdata.SHOPS else "chiikawamarket"
+        fx = fx_rates(request)
+        won_per_yen = fx["usd_krw"] / fx["usd_jpy"] if fx.get("usd_krw") and fx.get("usd_jpy") else None
+        rows = forwarders.compare(weight, kind=kind, shop_key=shop, subtotal=subtotal, won_per_yen=won_per_yen)
+        return shop_page(request, "forwarders.html", rows=rows, weight=weight, kind=kind, shop_key=shop,
+                         subtotal=subtotal, won_per_yen=won_per_yen, forwarders=forwarders.FORWARDERS,
+                         forwarders_checked=forwarders.CHECKED, others=forwarders.OTHER_FORWARDERS)
 
     @app.get("/shop/{key}", dependencies=[Depends(viewer)])
     def shop_guide(key: str, request: Request):

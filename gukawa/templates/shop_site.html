@@ -2,7 +2,7 @@
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{{ shop.name }} 구매 방법 · 구카와</title>
 {% include "_icons.html" %}
-<link rel="stylesheet" href="/static/viewer.css?v=5"><script src="/static/shop.js?v=1" defer></script></head>
+<link rel="stylesheet" href="/static/viewer.css?v=6"><script src="/static/shop.js?v=2" defer></script></head>
 <body class="viewer">
 {% from "_news.html" import news_card %}
 {% include "_topbar.html" %}
@@ -13,6 +13,7 @@
     <p class="lede">{{ shop.summary }}</p>
     <p class="hero-actions">
       <a class="pill-button primary" href="{{ shop.url }}" target="_blank" rel="noreferrer">쇼핑몰 열기 ↗</a>
+      <a class="pill-button" href="/shop/forwarders?shop={{ key }}">배대지 비교</a>
       <a class="pill-button" href="/shop/order">주문 정리</a>
       <a class="pill-button" href="{{ shop.guide_url }}" target="_blank" rel="noreferrer">원문 이용 안내 ↗</a>
     </p>

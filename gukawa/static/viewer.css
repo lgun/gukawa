@@ -268,6 +268,27 @@ code{font-size:.9em;background:var(--paper);border:1px solid var(--line);border-
 .verdict.ok{background:#e4f6e6}
 .verdict.over{background:#ffe0e6;color:#9b2c45}
 
+.compare-form{background:var(--card);border:2px solid var(--ink);border-radius:var(--radius);padding:14px 16px;margin:18px 0}
+.compare-wrap{margin-top:6px}
+.compare-table{border-collapse:collapse;width:100%;min-width:720px;font-size:14px;background:var(--card);border:2px solid var(--ink);border-radius:var(--radius)}
+.compare-table th{text-align:left;font-size:12px;color:var(--muted);padding:10px 8px;border-bottom:2px solid var(--line)}
+.compare-table td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+.compare-table small{display:block;color:var(--muted);font-size:12px}
+.compare-table .num{text-align:right;font-weight:800;font-size:16px;white-space:nowrap}
+.compare-table tr.best{background:color-mix(in srgb,var(--butter) 55%,transparent)}
+.forwarder-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.forwarder-cards h3 small{font-size:13px;color:var(--muted);font-weight:600;margin-left:4px}
+.card-links{display:flex;gap:14px;margin:6px 0 0}
+.fw-top{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.fw-top li{display:flex;align-items:baseline;gap:10px;background:var(--card);border:2px solid var(--ink);border-radius:16px;padding:10px 16px}
+.fw-top li span{color:var(--muted);font-size:13px;flex:1;min-width:0}
+.fw-top li strong{white-space:nowrap}
+.forwarder-pick{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:10px 18px;margin-bottom:12px}
+.forwarder-pick p{margin:0}
+.forwarder-pick label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:700}
+.forwarder-pick input{font:inherit;font-size:14px;min-height:40px;border:2px solid var(--ink);border-radius:12px;padding:6px 10px;background:var(--card);width:160px}
+.total-line.grand{border-top:2px dashed var(--line);padding-top:8px;margin-top:8px}
+
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:50;margin:0;max-width:calc(100% - 32px);
   background:var(--ink);color:#fff;font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
 .toast[hidden]{display:none}

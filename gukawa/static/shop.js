@@ -4,6 +4,7 @@
   const PROFILE_KEY = 'gukawa.profile';
   const CART_KEY = 'gukawa.cart';
   const FX_KEY = 'gukawa.fx';
+  const FORWARDER_KEY = 'gukawa.forwarder';
   const DUTY_FREE_USD = 150;
 
   const load = (key, fallback) => {
@@ -248,7 +249,80 @@
       totals.append(element('p', { className: 'muted', textContent: '환율을 넣으면 면세 여부를 계산해요.' }));
     }
     if (unknownShipping) totals.append(element('p', { className: 'muted', textContent: '배송비를 모르는 쇼핑몰이 있어 실제 합계는 더 클 수 있어요.' }));
+    const shipping = internationalFee(fx);
+    if (shipping) {
+      totals.append(element('p', { className: 'total-line' }, element('span', { textContent: `국제 배송비 어림 (${shipping.label}, ${shipping.billed}kg)` }),
+                            element('b', { textContent: shipping.won !== null ? won(shipping.won) : yen(shipping.price) })));
+      if (krw !== null && shipping.won !== null) {
+        totals.append(element('p', { className: 'total-line grand' }, element('span', { textContent: '예상 총액 (관부가세 제외)' }), element('b', { textContent: won(krw + shipping.won) })));
+      }
+    }
   }
+
+  // --- forwarder choice -----------------------------------------------------------------
+  function priceAt(rates, weight) {
+    const weights = shopData.weights || [];
+    const billed = Math.ceil(Math.max(weight, 0.5) * 2) / 2;
+    for (let i = 0; i < weights.length; i++) {
+      if (weights[i] === billed) return { price: rates[i], billed };
+      if (i + 1 < weights.length && weights[i] < billed && billed < weights[i + 1]) {
+        const ratio = (billed - weights[i]) / (weights[i + 1] - weights[i]);
+        return { price: rates[i] + (rates[i + 1] - rates[i]) * ratio, billed };
+      }
+    }
+    return null;
+  }
+  function internationalFee(fx) {
+    const choice = load(FORWARDER_KEY, null);
+    const forwarder = choice && (shopData.forwarders || {})[choice.key];
+    const method = forwarder && forwarder.methods[choice.method];
+    const weight = Number(choice && choice.weight) || 0;
+    if (!method || weight <= 0) return null;
+    const found = priceAt(method.rates, weight);
+    if (!found) return null;
+    const perYen = forwarder.applied_rate || (fx.usd_jpy && fx.usd_krw ? fx.usd_krw / fx.usd_jpy : 0);
+    const wonValue = forwarder.currency === 'KRW' ? found.price : (perYen ? found.price * perYen : null);
+    return { label: `${forwarder.name} ${method.label}`, billed: found.billed, price: found.price, won: wonValue };
+  }
+  function renderForwarderChoice() {
+    const choice = load(FORWARDER_KEY, null);
+    const forwarder = choice && (shopData.forwarders || {})[choice.key];
+    document.querySelectorAll('[data-forwarder-name]').forEach(node => {
+      node.textContent = forwarder ? `${forwarder.name} ${forwarder.methods[choice.method]?.label || ''}` : '아직 고르지 않았어요';
+    });
+    document.querySelectorAll('[data-weight]').forEach(input => { if (document.activeElement !== input) input.value = choice?.weight || ''; });
+    document.querySelectorAll('[data-pick-forwarder]').forEach(button => {
+      const picked = choice && choice.key === button.dataset.pickForwarder && choice.method === button.dataset.method;
+      button.textContent = picked ? '선택됨' : '이걸로';
+      button.classList.toggle('primary', Boolean(picked));
+    });
+  }
+  document.querySelectorAll('[data-pick-forwarder]').forEach(button => {
+    button.addEventListener('click', () => {
+      const d = button.dataset;
+      const weightField = document.querySelector('.compare-form [name="weight"]');
+      save(FORWARDER_KEY, { key: d.pickForwarder, method: d.method, weight: Number(weightField?.value) || 1 });
+      let message = `${d.label}(으)로 정했어요. 주문 정리에서 국제 배송비를 어림해요.`;
+      if (d.prefecture) {
+        const data = profile();
+        if (!data.prefecture || (data.prefecture !== d.prefecture && confirm(`내 배대지 주소의 都道府県을 ${data.prefecture} → ${d.prefecture}(으)로 바꿀까요?`))) {
+          save(PROFILE_KEY, { ...data, prefecture: d.prefecture });
+          message += ` 都道府県을 ${d.prefecture}(으)로 넣었어요.`;
+        }
+      }
+      renderProfileUses();
+      renderForwarderChoice();
+      toast(message);
+    });
+  });
+  document.querySelectorAll('[data-weight]').forEach(input => {
+    input.addEventListener('input', () => {
+      const choice = load(FORWARDER_KEY, null);
+      if (!choice) return;
+      save(FORWARDER_KEY, { ...choice, weight: Number(input.value) || 0 });
+      renderOrder();
+    });
+  });
 
   const addForm = document.querySelector('[data-add-form]');
   addForm?.addEventListener('submit', event => {
@@ -268,5 +342,6 @@
   });
 
   renderProfileUses();
+  renderForwarderChoice();
   renderOrder();
 })();
